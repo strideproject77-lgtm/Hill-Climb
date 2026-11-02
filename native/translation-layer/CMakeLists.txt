@@ -15,6 +15,7 @@ add_library(stride_tl_parser STATIC
     husk-tl-scan.c
     stride-elf-image.c
     husk-tl-a64.c
+    husk-tl-dexindex.c
 )
 
 target_include_directories(stride_tl_parser PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
