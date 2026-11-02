@@ -1,0 +1,8 @@
+Stride
+
+Stride is an independent project. It is not the Husk project and is not endorsed by the Husk contributors.
+
+Potential upstream source under review:
+- Husk: https://github.com/Leviidev/Husk
+
+No Husk source files are included in the initial Stride documentation commit. If upstream files are later incorporated, their original copyright and license notices will be retained and the relevant file-level attribution will be added to THIRD_PARTY_NOTICES.md.
