@@ -22,7 +22,7 @@ static void make_image(uint8_t b[IMAGE_SIZE]) {
 static void expect_reject(uint8_t *b,size_t n) {
     stride_elf_image out; char error[96];
     assert(!stride_elf_image_parse(b,n,&out,error,sizeof(error)));
-    assert(error[0]!='\\0');
+    assert(error[0]!='\0');
 }
 int main(void) {
     uint8_t b[IMAGE_SIZE]; stride_elf_image out; char error[96];
