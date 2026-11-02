@@ -19,7 +19,7 @@ int main(void) {
     assert(!a64_uses_gpr(movz, 18, &known) && known);
 
     /* Unknown encodings are not rewritten. */
-    const uint32_t unknown = 0xFFFFFFFFu;
+    const uint32_t unknown = 0x00000000u;
     assert(!a64_gpr_fields(unknown, (uint8_t[5]){0}, &(int){0}));
     assert(a64_subst_gpr(unknown, 18, 19) == unknown);
     return 0;
