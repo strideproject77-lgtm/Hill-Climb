@@ -409,9 +409,9 @@ char *husk_tl_scan(const char *const *paths, int count)
                  "need%s extra work from the loader.", arm64_trouble, arm64_libs,
                  arm64_libs == 1 ? "y" : "ies", arm64_trouble == 1 ? "s" : "");
     } else if (abis[1] || abis[2]) {
-        verdict = "native";
-        snprintf(summary, sizeof(summary), "32-bit ARM native code. Husk translates it "
-                 "to arm64 the same way it loads arm64 libraries.");
+        verdict = "noArm64";
+        snprintf(summary, sizeof(summary), "32-bit ARM native code only. Stride does not yet "
+                 "include the ARM32-to-ARM64 translation backend required to run it.");
     } else {
         verdict = "noArm64";
         bool x86 = abis[3] || abis[4];
