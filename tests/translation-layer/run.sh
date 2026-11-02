@@ -9,6 +9,9 @@ OUT="${OUT:-$(mktemp -d)}"
 mkdir -p "$OUT"
 CFLAGS="-std=gnu11 -O2 -g -Wall -Wextra -Werror -I$SRC"
 
+echo "== Husk DEX index compile check"
+cc $CFLAGS -fsyntax-only "$SRC/husk-tl-dexindex.c"
+
 echo "== Husk AArch64 register decoder"
 cc $CFLAGS -o "$OUT/a64_test" "$HERE/a64_test.c" "$SRC/husk-tl-a64.c"
 "$OUT/a64_test"
