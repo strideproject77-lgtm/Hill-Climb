@@ -9,6 +9,10 @@ OUT="${OUT:-$(mktemp -d)}"
 mkdir -p "$OUT"
 CFLAGS="-std=gnu11 -O2 -g -Wall -Wextra -Werror -I$SRC"
 
+echo "== Husk AArch64 register decoder"
+cc $CFLAGS -o "$OUT/a64_test" "$HERE/a64_test.c" "$SRC/husk-tl-a64.c"
+"$OUT/a64_test"
+
 echo "== ELF page planner"
 cc $CFLAGS -o "$OUT/plan_test" "$HERE/plan_test.c" "$SRC/husk-tl-elf.c"
 "$OUT/plan_test"
