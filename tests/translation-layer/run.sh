@@ -13,8 +13,9 @@ echo "== ELF page planner"
 cc $CFLAGS -o "$OUT/plan_test" "$HERE/plan_test.c" "$SRC/husk-tl-elf.c"
 "$OUT/plan_test"
 
-echo "== ELF image metadata parser compile"
-cc $CFLAGS -c "$SRC/stride-elf-image.c" -o "$OUT/stride-elf-image.o"
+echo "== ELF image metadata parser tests"
+cc $CFLAGS -o "$OUT/elf_image_test" "$HERE/elf_image_test.c" "$SRC/stride-elf-image.c"
+"$OUT/elf_image_test"
 
 echo "== APK and ELF scanner"
 cc $CFLAGS -fsanitize=address,undefined -o "$OUT/scan_cli" "$HERE/scan_cli.c" \
