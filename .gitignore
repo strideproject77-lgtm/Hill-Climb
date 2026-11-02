@@ -1,0 +1,31 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
+coverage/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+# Native build outputs
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+*.o
+*.a
+*.dylib
+*.so
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
