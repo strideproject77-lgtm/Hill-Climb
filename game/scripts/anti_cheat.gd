@@ -4,7 +4,7 @@ class_name FairPlayGuard
 const MAX_BANK := 2000000
 const MAX_GEMS := 100000
 const MAX_RUN_SPEED := 1350.0
-const MAX_DISTANCE_RATE := 92.0
+const MAX_DISTANCE_RATE := 125.0
 
 func validate_profile(bank: int, gems: int, vehicle: int, map_index: int, vehicle_count: int, map_count: int) -> bool:
 	return bank >= 0 and bank <= MAX_BANK and gems >= 0 and gems <= MAX_GEMS and vehicle >= 0 and vehicle < vehicle_count and map_index >= 0 and map_index < map_count
