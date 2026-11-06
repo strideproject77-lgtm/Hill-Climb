@@ -91,7 +91,7 @@ jobs:
         run: |
           set -eux
           mkdir -p game/build
-          godot --headless --verbose --path game --export-debug "Android" game/build/hill-climb-adventure.apk
+          godot --headless --verbose --path game --export-debug "Android" build/hill-climb-adventure.apk
       - name: Verify APK archive
         run: |
           set -eux
