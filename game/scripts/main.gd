@@ -33,6 +33,16 @@ var run_reward := 0
 var run_gems := 0
 var fair_play_valid := true
 var achievement_notice := ""
+var run_bonus_coins := 0
+var run_airtime := 0.0
+var airborne_rotation := 0.0
+var airborne_duration := 0.0
+var stunt_chain := 0
+var stunt_chain_timer := 0.0
+var stunt_count := 0
+var checkpoint_count := 0
+var next_checkpoint_distance := 1000.0
+var progression_notice := ""
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
@@ -80,6 +90,16 @@ func _reset_run() -> void:
 	run_elapsed = 0.0
 	run_reward = 0
 	run_gems = 0
+	run_bonus_coins = 0
+	run_airtime = 0.0
+	airborne_rotation = 0.0
+	airborne_duration = 0.0
+	stunt_chain = 0
+	stunt_chain_timer = 0.0
+	stunt_count = 0
+	checkpoint_count = 0
+	next_checkpoint_distance = 1000.0
+	progression_notice = ""
 	fair_play_valid = true
 	achievement_notice = ""
 	fuel_capacity = float(profile.vehicle_spec().fuel_capacity)
@@ -107,11 +127,23 @@ func _update_run(dt: float) -> void:
 		spec["heat_multiplier"] = float(spec.heat_multiplier) * 1.65
 	elif profile.selected_map == 4:
 		spec["gravity_scale"] = 0.32
+	var was_grounded := car.grounded
+	var old_angle := car.angle
 	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
+	_update_stunts(dt, was_grounded, old_angle)
 	if gas_pressed and fuel > 0.0:
 		fuel = maxf(0.0, fuel - (0.58 + float(spec.power) * 0.17 + car.engine_heat * 0.0018) * float(spec.get("fuel_multiplier", 1.0)) * dt)
 	run_elapsed += dt
 	run_distance = maxf(run_distance, (car.x - 180.0) / 10.0)
+	while run_distance >= next_checkpoint_distance:
+		checkpoint_count += 1
+		run_bonus_coins += 25
+		fuel = minf(fuel_capacity, fuel + fuel_capacity * 0.12)
+		progression_notice = "CHECKPOINT %d  +25 COINS" % checkpoint_count
+		next_checkpoint_distance += 1000.0
+	stunt_chain_timer = maxf(0.0, stunt_chain_timer - dt)
+	if stunt_chain_timer <= 0.0:
+		stunt_chain = 0
 	camera_x = maxf(0.0, car.x - 330.0)
 	_collect_items()
 	crash_flash = maxf(0.0, crash_flash - dt)
@@ -143,6 +175,24 @@ func _collect_items() -> void:
 			fuel_pickups[j] = true
 			fuel = minf(fuel_capacity, fuel + fuel_capacity * 0.34)
 
+func _update_stunts(dt: float, was_grounded: bool, old_angle: float) -> void:
+	if not car.grounded:
+		airborne_duration += dt
+		run_airtime += dt
+		airborne_rotation += wrapf(car.angle - old_angle, -PI, PI)
+	elif not was_grounded:
+		if airborne_duration >= 0.55:
+			var flips := int(floor(absf(airborne_rotation) / TAU))
+			stunt_chain = mini(4, stunt_chain + 1) if stunt_chain_timer > 0.0 else 1
+			var bonus := (15 + flips * 35 + int(airborne_duration * 8.0)) * stunt_chain
+			run_bonus_coins += bonus
+			stunt_count += 1
+			progression_notice = ("BACKFLIP" if airborne_rotation < 0.0 else "FRONTFLIP") if flips > 0 else "CLEAN AIR"
+			progression_notice += "  x%d  +%d" % [stunt_chain, bonus]
+			stunt_chain_timer = 7.0
+		airborne_duration = 0.0
+		airborne_rotation = 0.0
+
 func _finish_run() -> void:
 	if game_state != "playing":
 		return
@@ -150,7 +200,8 @@ func _finish_run() -> void:
 	_clear_controls()
 	var spec: Dictionary = profile.vehicle_spec()
 	fair_play_valid = anti_cheat.validate_run(run_distance, run_coins, run_elapsed, absf(car.vx), float(spec.speed))
-	run_reward = anti_cheat.sanitize_reward(run_coins + int(run_distance / 80.0), fair_play_valid)
+	profile.add_daily_progress(run_distance, run_coins, run_airtime)
+	run_reward = anti_cheat.sanitize_reward(run_coins + int(run_distance / 80.0) + run_bonus_coins, fair_play_valid)
 	if fair_play_valid:
 		profile.bank = clampi(profile.bank + run_reward, 0, 2000000)
 		profile.stats["runs"] = int(profile.stats.runs) + 1
@@ -243,17 +294,19 @@ func _update_controls() -> void:
 func _handle_menu_press(pos: Vector2) -> void:
 	match game_state:
 		"home":
-			if Rect2(385, 335, 190, 76).has_point(pos):
+			if Rect2(320, 335, 140, 76).has_point(pos):
 				_reset_run()
 				game_state = "playing"
-			elif Rect2(35, 335, 165, 76).has_point(pos):
+			elif Rect2(20, 335, 140, 76).has_point(pos):
 				game_state = "garage"
-			elif Rect2(210, 335, 165, 76).has_point(pos):
+			elif Rect2(170, 335, 140, 76).has_point(pos):
 				game_state = "maps"
-			elif Rect2(585, 335, 165, 76).has_point(pos):
+			elif Rect2(470, 335, 140, 76).has_point(pos):
 				game_state = "upgrades"
-			elif Rect2(760, 335, 165, 76).has_point(pos):
+			elif Rect2(620, 335, 140, 76).has_point(pos):
 				game_state = "achievements"
+			elif Rect2(770, 335, 140, 76).has_point(pos):
+				game_state = "missions"
 		"maps":
 			if Rect2(35, 445, 170, 62).has_point(pos):
 				game_state = "home"
@@ -288,8 +341,21 @@ func _handle_menu_press(pos: Vector2) -> void:
 		"achievements":
 			if Rect2(35, 445, 170, 62).has_point(pos):
 				game_state = "home"
+		"missions":
+			if Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
+			elif Rect2(350, 125, 260, 55).has_point(pos):
+				if profile.claim_daily_reward():
+					progression_notice = "DAILY REWARD  +40 COINS  +2 GEMS"
+			else:
+				for i in range(profile.DAILY_MISSIONS.size()):
+					var mission: Dictionary = profile.DAILY_MISSIONS[i]
+					if Rect2(210, 205.0 + float(i) * 72.0, 540, 60).has_point(pos):
+						if profile.claim_mission(str(mission.id)):
+							progression_notice = "MISSION CLAIMED  +%d COINS" % int(mission.coins)
+						break
 		"results":
-			if Rect2(350, 370, 260, 72).has_point(pos):
+			if Rect2(350, 390, 260, 62).has_point(pos):
 				_reset_run()
 				game_state = "playing"
 			elif Rect2(35, 445, 170, 62).has_point(pos):
@@ -338,6 +404,7 @@ func _draw() -> void:
 		"upgrades": _draw_upgrades()
 		"results": _draw_results()
 		"achievements": _draw_achievements()
+		"missions": _draw_missions()
 
 func _draw_backdrop() -> void:
 	var palette: Dictionary = profile.MAPS[profile.selected_map]
@@ -462,6 +529,9 @@ func _draw_vehicle() -> void:
 func _draw_hud() -> void:
 	_panel(Rect2(20, 18, 205, 78), Color("#172b32"))
 	_text("DISTANCE", Vector2(38, 45), 13, Color("#b9d5d9"))
+	_text("CHECKPOINT %d  |  NEXT %dm" % [checkpoint_count, int(next_checkpoint_distance)], Vector2(480, 42), 14, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	if progression_notice != "":
+		_text(progression_notice, Vector2(480, 125), 18, Color("#ffe39a"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("%dm" % int(run_distance), Vector2(38, 81), 29, Color.WHITE)
 	_panel(Rect2(240, 18, 140, 78), Color("#172b32"))
 	_text("COINS", Vector2(258, 45), 13, Color("#f3ca66"))
@@ -477,6 +547,8 @@ func _draw_hud() -> void:
 	_control(Rect2(235, 420, 190, 96), "LEAN BACK", Color("#536d7a"))
 	_control(Rect2(450, 420, 190, 96), "LEAN FWD", Color("#536d7a"))
 	_control(Rect2(750, 420, 190, 96), "THROTTLE", Color("#d87537"))
+	if stunt_chain > 1 and stunt_chain_timer > 0.0:
+		_text("STUNT COMBO x%d" % stunt_chain, Vector2(480, 155), 18, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
 
 func _draw_home() -> void:
 	_overlay()
@@ -485,7 +557,7 @@ func _draw_home() -> void:
 	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 157), 19, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Build your machine. Master every terrain.", Vector2(480, 203), 17, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
 	_draw_showcase_vehicle(Vector2(480, 274), Color(str(profile.VEHICLES[profile.selected_vehicle].color)), profile.selected_vehicle)
-	var buttons := [{"rect":Rect2(35,335,165,76),"label":"GARAGE","color":"#386d79"},{"rect":Rect2(210,335,165,76),"label":"MAPS","color":"#4d7e77"},{"rect":Rect2(385,335,190,76),"label":"START DRIVE","color":"#d47a36"},{"rect":Rect2(585,335,165,76),"label":"UPGRADES","color":"#536a7b"},{"rect":Rect2(760,335,165,76),"label":"TROPHIES","color":"#75649a"}]
+	var buttons := [{"rect":Rect2(20,335,140,76),"label":"GARAGE","color":"#386d79"},{"rect":Rect2(170,335,140,76),"label":"MAPS","color":"#4d7e77"},{"rect":Rect2(320,335,140,76),"label":"DRIVE","color":"#d47a36"},{"rect":Rect2(470,335,140,76),"label":"UPGRADES","color":"#536a7b"},{"rect":Rect2(620,335,140,76),"label":"TROPHIES","color":"#75649a"},{"rect":Rect2(770,335,140,76),"label":"MISSIONS","color":"#548b78"}]
 	for item in buttons:
 		_panel(item.rect, Color(str(item.color)))
 		_text(str(item.label), item.rect.position + Vector2(item.rect.size.x * 0.5, 47), 16, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -580,13 +652,33 @@ func _draw_achievements() -> void:
 		_text("CLAIMED" if unlocked else "+%d GEMS" % int(item.reward), Vector2(735, y + 26), 12, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_RIGHT)
 	_back_button()
 
+func _draw_missions() -> void:
+	_overlay()
+	_panel(Rect2(130, 35, 700, 465), Color("#17262e"))
+	_text("DAILY CHALLENGES", Vector2(480, 82), 35, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Complete objectives on your drives to earn extra coins and gems", Vector2(480, 108), 13, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(350, 125, 260, 55), Color("#4d8b65") if not profile.daily_claimed else Color("#344b50"))
+	_text("CLAIM DAILY  +40 COINS  +2 GEMS" if not profile.daily_claimed else "DAILY REWARD CLAIMED", Vector2(480, 159), 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	for i in range(profile.DAILY_MISSIONS.size()):
+		var mission: Dictionary = profile.DAILY_MISSIONS[i]
+		var y := 205.0 + float(i) * 72.0
+		var progress := float(profile.mission_progress.get(str(mission.id), 0.0))
+		var complete := profile.mission_complete(mission)
+		var claimed := profile.mission_claimed.has(str(mission.id))
+		_panel(Rect2(210, y, 540, 60), Color("#3c6655") if complete else Color("#293e48"))
+		_text(str(mission.name), Vector2(228, y + 22), 15, Color.WHITE)
+		_text(str(mission.description), Vector2(228, y + 43), 12, Color("#c2d2d2"))
+		_text("%d / %d" % [int(progress), int(mission.target)], Vector2(620, y + 24), 13, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_RIGHT)
+		_text("CLAIMED" if claimed else ("CLAIM" if complete else "+%d COINS / %d GEMS" % [int(mission.coins), int(mission.gems)]), Vector2(730, y + 44), 11, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_back_button()
+
 func _draw_results() -> void:
 	_overlay()
 	_panel(Rect2(245, 48, 470, 445), Color("#17262e"))
 	_text("RUN FINISHED", Vector2(480, 105), 36, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("%dm" % int(run_distance), Vector2(480, 168), 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_text("DISTANCE", Vector2(480, 195), 14, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Coins collected  %d" % run_coins, Vector2(480, 238), 18, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Coins %d  |  Stunt & checkpoint bonus +%d" % [run_coins, run_bonus_coins], Vector2(480, 238), 15, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Run reward  +%d coins" % run_reward if fair_play_valid else "REWARD HELD - RUN VALIDATION", Vector2(480, 270), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Achievement gems  +%d" % run_gems, Vector2(480, 298), 15, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Bank %d   Gems %d" % [profile.bank, profile.gems], Vector2(480, 326), 16, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
