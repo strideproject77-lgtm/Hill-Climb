@@ -115,14 +115,14 @@ jobs:
           fi
           command -v readelf
           unzip -q "$APK" 'lib/*' -d "$WORK"
-          mapfile -t LIBS < <(find "$WORK/lib" -type f -name '*.so' -print)
-          test "${#LIBS[@]}" -gt 0
+          find "$WORK/lib" -type f -name '*.so' -print > "$WORK/libraries.txt"
+          test -s "$WORK/libraries.txt"
           NON_ARM_DIR="$(find "$WORK/lib" -mindepth 1 -maxdepth 1 -type d ! -name arm64-v8a -print -quit)"
           if [ -n "$NON_ARM_DIR" ]; then
             echo "Unexpected non-ARM64 ABI found: $NON_ARM_DIR" >&2
             exit 1
           fi
-          for LIB in "${LIBS[@]}"; do
+          while IFS= read -r LIB; do
             case "$LIB" in
               */lib/arm64-v8a/*.so) ;;
               *) echo "Unexpected native library path: $LIB" >&2; exit 1 ;;
@@ -131,7 +131,7 @@ jobs:
             grep -q 'Class:.*ELF64' "$WORK/elf-header.txt"
             grep -q 'Machine:.*AArch64' "$WORK/elf-header.txt"
             echo "ARM64 ELF verified: ${LIB##*/}"
-          done
+          done < "$WORK/libraries.txt"
           echo "JIT-less readiness checks passed: APK contains ARM64 ELF libraries only."
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
