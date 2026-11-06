@@ -24,3 +24,13 @@ func sanitize_reward(reward: int, valid_run: bool) -> int:
 	if not valid_run:
 		return 0
 	return clampi(reward, 0, 25000)
+func validate_progression(stunts: int, checkpoints: int, bonus_coins: int, elapsed: float, distance: float) -> bool:
+	if stunts < 0 or checkpoints < 0 or bonus_coins < 0 or elapsed < 0.0 or distance < 0.0:
+		return false
+	if checkpoints > int(distance / 1000.0):
+		return false
+	if stunts > int(elapsed / 0.55) + 1:
+		return false
+	var possible_flips := int(elapsed * 4.2 / TAU)
+	var max_bonus := checkpoints * 25 + stunts * (15 + int(elapsed * 8.0) + possible_flips * 35) * 4
+	return bonus_coins <= max_bonus
