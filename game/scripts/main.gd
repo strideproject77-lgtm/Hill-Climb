@@ -562,41 +562,72 @@ func _draw_vehicle() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 func _draw_hud() -> void:
-	_panel(Rect2(20, 18, 205, 78), Color("#172b32"))
-	_text("DISTANCE", Vector2(38, 45), 13, Color("#b9d5d9"))
-	_text("CHECKPOINT %d  |  NEXT %dm" % [checkpoint_count, int(next_checkpoint_distance)], Vector2(480, 42), 14, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
-	if progression_notice != "":
-		_text(progression_notice, Vector2(480, 125), 18, Color("#ffe39a"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("%dm" % int(run_distance), Vector2(38, 81), 29, Color.WHITE)
-	_panel(Rect2(240, 18, 140, 78), Color("#172b32"))
-	_text("COINS", Vector2(258, 45), 13, Color("#f3ca66"))
-	_text(str(run_coins), Vector2(258, 81), 29, Color.WHITE)
-	_panel(Rect2(705, 18, 235, 78), Color("#172b32"))
-	_text("FUEL", Vector2(723, 44), 13, Color.WHITE)
-	_text("ENGINE", Vector2(723, 91), 10, Color("#c7d7d7"))
-	draw_rect(Rect2(780, 82, 138, 8), Color("#3b4b4f"))
-	draw_rect(Rect2(780, 82, 138.0 * car.engine_heat / 120.0, 8), Color("#e36b4d") if car.engine_heat > 75.0 else Color("#e7b24a"))
-	draw_rect(Rect2(723, 56, 195, 17), Color("#3b4b4f"))
-	draw_rect(Rect2(723, 56, 195.0 * fuel / fuel_capacity, 17), Color("#77cb68") if fuel > fuel_capacity * 0.25 else Color("#e36b4d"))
+	_panel(Rect2(18, 16, 170, 78), Color("#14232d"))
+	_draw_icon("distance", Vector2(42, 39), 13, Color("#f2c46a"))
+	_text("DISTANCE", Vector2(62, 43), 11, Color("#a9c2c5"))
+	_text("%dm" % int(run_distance), Vector2(34, 79), 26, Color.WHITE)
+	_panel(Rect2(200, 16, 126, 78), Color("#14232d"))
+	_draw_icon("coin", Vector2(224, 39), 12, Color("#f2c46a"))
+	_text("COINS", Vector2(244, 43), 11, Color("#a9c2c5"))
+	_text(str(run_coins), Vector2(218, 79), 26, Color.WHITE)
+	_panel(Rect2(338, 16, 284, 78), Color("#14232d"))
+	_text("CHECKPOINT  %d" % checkpoint_count, Vector2(480, 42), 12, Color("#f2c46a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("NEXT  %dm" % int(maxf(0.0, next_checkpoint_distance - run_distance)), Vector2(480, 72), 19, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(634, 16, 308, 78), Color("#14232d"))
+	_text("FUEL", Vector2(652, 40), 11, Color("#a9c2c5"))
+	draw_rect(Rect2(704, 29, 216, 13), Color("#3b4b4f"))
+	draw_rect(Rect2(704, 29, 216.0 * clampf(fuel / maxf(1.0, fuel_capacity), 0.0, 1.0), 13), Color("#72c779") if fuel > fuel_capacity * 0.25 else Color("#e36b4d"))
+	_text("ENGINE TEMP", Vector2(652, 76), 10, Color("#a9c2c5"))
+	draw_rect(Rect2(738, 65, 182, 10), Color("#3b4b4f"))
+	draw_rect(Rect2(738, 65, 182.0 * clampf(car.engine_heat / 120.0, 0.0, 1.0), 10), Color("#e36b4d") if car.engine_heat > 75.0 else Color("#e7b24a"))
 	_control(Rect2(20, 420, 190, 96), "BRAKE", Color("#477e9a"))
 	_control(Rect2(235, 420, 190, 96), "LEAN BACK", Color("#536d7a"))
 	_control(Rect2(450, 420, 190, 96), "LEAN FWD", Color("#536d7a"))
 	_control(Rect2(750, 420, 190, 96), "THROTTLE", Color("#d87537"))
+	_panel(Rect2(20, 112, 140, 48), Color("#14232d"))
+	_text("SPEED  %d" % int(absf(car.vx) * 0.36), Vector2(90, 143), 16, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(800, 112, 140, 48), Color("#14232d"))
+	_text("DAMAGE  %d%%" % int(clampf(car.damage, 0.0, 100.0)), Vector2(870, 143), 14, Color("#f0a18b"), HORIZONTAL_ALIGNMENT_CENTER)
+	if progression_notice != "":
+		_text(progression_notice, Vector2(480, 190), 18, Color("#ffe39a"), HORIZONTAL_ALIGNMENT_CENTER)
 	if stunt_chain > 1 and stunt_chain_timer > 0.0:
-		_text("STUNT COMBO x%d" % stunt_chain, Vector2(480, 155), 18, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
+		_text("STUNT COMBO  x%d" % stunt_chain, Vector2(480, 220), 18, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
 
 func _draw_home() -> void:
 	_overlay()
-	_panel(Rect2(40, 42, 880, 440), Color("#17262e"))
-	_text("RIDGELINE", Vector2(480, 116), 54, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 157), 19, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Build your machine. Master every terrain.", Vector2(480, 203), 17, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_showcase_vehicle(Vector2(480, 274), Color(str(profile.VEHICLES[profile.selected_vehicle].color)), profile.selected_vehicle)
-	var buttons := [{"rect":Rect2(20,335,140,76),"label":"GARAGE","color":"#386d79"},{"rect":Rect2(170,335,140,76),"label":"MAPS","color":"#4d7e77"},{"rect":Rect2(320,335,140,76),"label":"DRIVE","color":"#d47a36"},{"rect":Rect2(470,335,140,76),"label":"UPGRADES","color":"#536a7b"},{"rect":Rect2(620,335,140,76),"label":"TROPHIES","color":"#75649a"},{"rect":Rect2(770,335,140,76),"label":"MISSIONS","color":"#548b78"}]
+	_panel(Rect2(24, 18, 300, 78), Color("#14232d"))
+	_draw_icon("profile", Vector2(66, 57), 25, Color("#d7e7e9"))
+	_text("DRIVER", Vector2(104, 45), 13, Color("#92abb3"))
+	_text("RIDGELINE ROOKIE", Vector2(104, 70), 20, Color.WHITE)
+	_panel(Rect2(665, 20, 128, 54), Color("#263b43"))
+	_draw_icon("coin", Vector2(689, 47), 13, Color("#f3c65d"))
+	_text(str(profile.bank), Vector2(711, 55), 18, Color.WHITE)
+	_panel(Rect2(802, 20, 130, 54), Color("#263b43"))
+	_draw_icon("gem", Vector2(825, 47), 13, Color("#77d8e7"))
+	_text(str(profile.gems), Vector2(847, 55), 18, Color.WHITE)
+	_panel(Rect2(40, 115, 880, 196), Color("#172a34"))
+	draw_rect(Rect2(40, 115, 880, 3), Color("#e6a64d"))
+	_text("STRIDE", Vector2(480, 164), 43, Color("#f2bd62"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("HILL CLIMB", Vector2(480, 202), 29, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("BUILD YOUR MACHINE  •  CONQUER EVERY RIDGE", Vector2(480, 230), 13, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_draw_showcase_vehicle(Vector2(480, 276), Color(str(profile.VEHICLES[profile.selected_vehicle].color)), profile.selected_vehicle)
+	var buttons := [
+		{"rect":Rect2(20,335,140,76),"label":"GARAGE","icon":"garage","color":"#315766"},
+		{"rect":Rect2(170,335,140,76),"label":"MAPS","icon":"map","color":"#355e58"},
+		{"rect":Rect2(320,335,140,76),"label":"DRIVE","icon":"play","color":"#bd7138"},
+		{"rect":Rect2(470,335,140,76),"label":"UPGRADES","icon":"tools","color":"#40576a"},
+		{"rect":Rect2(620,335,140,76),"label":"TROPHIES","icon":"trophy","color":"#65577c"},
+		{"rect":Rect2(770,335,140,76),"label":"MISSIONS","icon":"mission","color":"#3d6c59"}
+	]
 	for item in buttons:
 		_panel(item.rect, Color(str(item.color)))
-		_text(str(item.label), item.rect.position + Vector2(item.rect.size.x * 0.5, 47), 16, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text("%s   COINS %d   GEMS %d   BEST %dm" % [profile.MAPS[profile.selected_map].name, profile.bank, profile.gems, best_distance], Vector2(480, 455), 15, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+		_draw_icon(str(item.icon), item.rect.position + Vector2(70, 25), 17, Color("#f4d89a"))
+		_text(str(item.label), item.rect.position + Vector2(70, 64), 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(24, 433, 912, 76), Color("#14232d"))
+	_text("CURRENT REGION", Vector2(46, 458), 11, Color("#91aab1"))
+	_text(str(profile.MAPS[profile.selected_map].name), Vector2(46, 485), 18, Color.WHITE)
+	_text("BEST  %dm" % best_distance, Vector2(475, 481), 16, Color("#f2c46a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("RUNS  %d" % int(profile.stats.runs), Vector2(875, 481), 16, Color("#c5d6d8"), HORIZONTAL_ALIGNMENT_RIGHT)
 
 func _map_card_rect(index: int) -> Rect2:
 	return Rect2(150.0 + float(index % 3) * 220.0, 145.0 + float(index / 3) * 150.0, 200.0, 132.0)
@@ -730,9 +761,50 @@ func _back_button() -> void:
 	_panel(Rect2(35, 445, 170, 62), Color("#3c6874"))
 	_text("BACK", Vector2(120, 485), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 
+func _draw_icon(kind: String, center: Vector2, scale: float, color: Color) -> void:
+	var r := scale
+	match kind:
+		"profile":
+			draw_circle(center, r, color.darkened(0.55))
+			draw_circle(center + Vector2(0, -r * 0.32), r * 0.34, color)
+			draw_arc(center + Vector2(0, r * 0.55), r * 0.57, PI, TAU, 24, color, maxf(2.0, r * 0.24), true)
+		"coin":
+			draw_circle(center, r, color.darkened(0.35))
+			draw_circle(center, r * 0.72, color)
+			draw_arc(center, r * 0.48, 0, TAU, 24, Color("#8c642e"), 2.0, true)
+		"gem":
+			draw_colored_polygon(PackedVector2Array([center + Vector2(0,-r),center + Vector2(r*0.82,-r*0.25),center + Vector2(r*0.55,r*0.72),center + Vector2(0,r),center + Vector2(-r*0.55,r*0.72),center + Vector2(-r*0.82,-r*0.25)]),color)
+		"play":
+			draw_colored_polygon(PackedVector2Array([center + Vector2(-r*0.55,-r),center + Vector2(r,r*0.0),center + Vector2(-r*0.55,r)]),color)
+		"garage":
+			draw_line(center + Vector2(-r,-r*0.1),center + Vector2(0,-r),color,3.0,true)
+			draw_line(center + Vector2(0,-r),center + Vector2(r,-r*0.1),color,3.0,true)
+			draw_rect(Rect2(center + Vector2(-r*0.72,-r*0.1),Vector2(r*1.44,r*0.95)),color,false,3.0)
+			draw_rect(Rect2(center + Vector2(-r*0.28,r*0.25),Vector2(r*0.56,r*0.6)),color,false,2.0)
+		"map":
+			draw_rect(Rect2(center + Vector2(-r,-r*0.8),Vector2(r*2,r*1.6)),color,false,2.0)
+			draw_line(center + Vector2(-r*0.55,-r*0.5),center + Vector2(-r*0.15,r*0.45),color,2.0)
+			draw_line(center + Vector2(-r*0.15,r*0.45),center + Vector2(r*0.45,-r*0.4),color,2.0)
+			draw_circle(center + Vector2(r*0.45,-r*0.4),r*0.2,color)
+		"tools":
+			draw_line(center + Vector2(-r*0.75,r*0.75),center + Vector2(r*0.55,-r*0.55),color,4.0,true)
+			draw_arc(center + Vector2(r*0.58,-r*0.58),r*0.42,-1.2,1.8,18,color,3.0,true)
+			draw_circle(center + Vector2(-r*0.65,r*0.65),r*0.22,color)
+		"trophy":
+			draw_rect(Rect2(center + Vector2(-r*0.5,-r*0.7),Vector2(r,r*0.9)),color)
+			draw_arc(center + Vector2(-r*0.55,-r*0.25),r*0.4,-PI/2,PI/2,16,color,3.0,true)
+			draw_arc(center + Vector2(r*0.55,-r*0.25),r*0.4,PI/2,3*PI/2,16,color,3.0,true)
+			draw_line(center + Vector2(0,r*0.2),center + Vector2(0,r*0.75),color,3.0)
+			draw_line(center + Vector2(-r*0.55,r*0.8),center + Vector2(r*0.55,r*0.8),color,3.0)
+		"mission":
+			draw_rect(Rect2(center + Vector2(-r*0.65,-r*0.8),Vector2(r*1.3,r*1.6)),color,false,2.0)
+			draw_line(center + Vector2(-r*0.35,-r*0.2),center + Vector2(-r*0.05,r*0.1),color,3.0)
+			draw_line(center + Vector2(-r*0.05,r*0.1),center + Vector2(r*0.45,-r*0.4),color,3.0)
+
 func _panel(rect: Rect2, color: Color) -> void:
+	draw_rect(Rect2(rect.position + Vector2(0, 4), rect.size), Color(0, 0, 0, 0.28))
 	draw_rect(rect, color)
-	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 4)), Color(1, 1, 1, 0.13))
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 2)), Color(1, 1, 1, 0.17))
 
 func _control(rect: Rect2, label: String, color: Color) -> void:
 	draw_rect(rect, Color(0.035, 0.07, 0.09, 0.68))
