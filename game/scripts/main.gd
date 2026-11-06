@@ -199,8 +199,9 @@ func _finish_run() -> void:
 	game_state = "results"
 	_clear_controls()
 	var spec: Dictionary = profile.vehicle_spec()
-	fair_play_valid = anti_cheat.validate_run(run_distance, run_coins, run_elapsed, absf(car.vx), float(spec.speed))
-	profile.add_daily_progress(run_distance, run_coins, run_airtime)
+	fair_play_valid = anti_cheat.validate_run(run_distance, run_coins, run_elapsed, absf(car.vx), float(spec.speed)) and anti_cheat.validate_progression(stunt_count, checkpoint_count, run_bonus_coins, run_elapsed, run_distance)
+	if fair_play_valid:
+		profile.add_daily_progress(run_distance, run_coins, run_airtime)
 	run_reward = anti_cheat.sanitize_reward(run_coins + int(run_distance / 80.0) + run_bonus_coins, fair_play_valid)
 	if fair_play_valid:
 		profile.bank = clampi(profile.bank + run_reward, 0, 2000000)
