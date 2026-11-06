@@ -1,6 +1,8 @@
 extends RefCounted
 class_name GameProfile
+
 const SAVE_PATH := "user://stride_hill_profile.cfg"
+const SAVE_VERSION := 2
 const VEHICLES := [
 	{"id":"trail_buggy","name":"TRAIL BUGGY","price":0,"mass":1.0,"power":1.0,"suspension":1.0,"grip":1.0,"speed":1.0,"inertia":1.0,"color":"#e87535","description":"Balanced starter off-roader"},
 	{"id":"rally_4x4","name":"RALLY 4x4","price":650,"mass":1.2,"power":1.15,"suspension":1.18,"grip":1.12,"speed":0.92,"inertia":1.15,"color":"#4c9cda","description":"Stable climb specialist"},
@@ -17,43 +19,97 @@ const MAPS := [
 	{"name":"VOLCANIC RUN","subtitle":"Hot rock, steep ridges and ash","sky":"#9d7976","earth":"#4b4143","surface":"#c66a45"},
 	{"name":"MOON BASIN","subtitle":"Low gravity and giant air time","sky":"#4f597d","earth":"#55566d","surface":"#a4a7b9"}
 ]
+const ACHIEVEMENTS := [
+	{"id":"first_run","name":"FIRST DESCENT","description":"Finish your first drive","reward":2},
+	{"id":"distance_1000","name":"MILE MARKER","description":"Travel 1,000 metres in total","reward":4},
+	{"id":"distance_5000","name":"LONG HAUL","description":"Travel 5,000 metres in total","reward":8},
+	{"id":"coin_100","name":"COIN HUNTER","description":"Collect 100 coins across all runs","reward":5},
+	{"id":"runs_10","name":"ROAD REGULAR","description":"Complete 10 drives","reward":6},
+	{"id":"clean_run","name":"SMOOTH LANDING","description":"Finish a run with under 10% damage","reward":3}
+]
 var bank := 0
+var gems := 0
 var selected_vehicle := 0
 var selected_map := 0
 var best_distance := 0
-var upgrades := {"engine":0,"suspension":0,"tires":0,"fuel":0}
+var condition := 100.0
+var upgrades := {"engine":0,"suspension":0,"tires":0,"fuel":0,"transmission":0,"cooling":0}
 var unlocked := [0]
+var achievements: Array = []
+var stats := {"runs":0,"total_distance":0,"total_coins":0}
+
 func load_profile() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return
 	bank = int(cfg.get_value("career", "coins", 0))
+	gems = int(cfg.get_value("career", "gems", 0))
 	selected_vehicle = int(cfg.get_value("garage", "selected", 0))
 	selected_map = int(cfg.get_value("career", "map", 0))
 	best_distance = int(cfg.get_value("career", "best", 0))
-	upgrades = cfg.get_value("upgrades", "levels", upgrades)
+	condition = float(cfg.get_value("garage", "condition", 100.0))
+	var saved_upgrades: Dictionary = cfg.get_value("upgrades", "levels", upgrades)
+	var saved_stats: Dictionary = cfg.get_value("career", "stats", stats)
+	var saved_achievements: Array = cfg.get_value("career", "achievements", [])
+	upgrades = upgrades.duplicate(true)
+	for key in upgrades:
+		upgrades[key] = clampi(int(saved_upgrades.get(key, 0)), 0, 5)
+	stats = stats.duplicate(true)
+	for key in stats:
+		stats[key] = maxi(0, int(saved_stats.get(key, 0)))
+	achievements = saved_achievements.duplicate()
 	unlocked = cfg.get_value("garage", "unlocked", [0])
 	if unlocked.is_empty():
 		unlocked = [0]
-	for key in upgrades:
-		upgrades[key] = clampi(int(upgrades[key]), 0, 5)
-	selected_vehicle = clampi(selected_vehicle, 0, VEHICLES.size() - 1)
-	selected_map = clampi(selected_map, 0, MAPS.size() - 1)
+	unlocked = _valid_indices(unlocked, VEHICLES.size())
 	if not unlocked.has(0):
 		unlocked.append(0)
+	bank = clampi(bank, 0, 2000000)
+	gems = clampi(gems, 0, 100000)
+	selected_vehicle = clampi(selected_vehicle, 0, VEHICLES.size() - 1)
+	selected_map = clampi(selected_map, 0, MAPS.size() - 1)
+	condition = clampf(condition, 0.0, 100.0)
+	if not unlocked.has(selected_vehicle):
+		selected_vehicle = 0
+
+func _valid_indices(values: Array, limit: int) -> Array:
+	var result: Array = []
+	for value in values:
+		var index := int(value)
+		if index >= 0 and index < limit and not result.has(index):
+			result.append(index)
+	return result
+
 func save_profile() -> void:
 	var cfg := ConfigFile.new()
-	cfg.set_value("career", "coins", bank)
+	cfg.set_value("meta", "version", SAVE_VERSION)
+	cfg.set_value("career", "coins", clampi(bank, 0, 2000000))
+	cfg.set_value("career", "gems", clampi(gems, 0, 100000))
 	cfg.set_value("career", "best", best_distance)
-	cfg.set_value("garage", "selected", selected_vehicle)
 	cfg.set_value("career", "map", selected_map)
+	cfg.set_value("career", "stats", stats)
+	cfg.set_value("career", "achievements", achievements)
+	cfg.set_value("garage", "selected", selected_vehicle)
 	cfg.set_value("garage", "unlocked", unlocked)
+	cfg.set_value("garage", "condition", condition)
 	cfg.set_value("upgrades", "levels", upgrades)
 	cfg.save(SAVE_PATH)
+
 func vehicle_spec() -> Dictionary:
 	var spec: Dictionary = VEHICLES[selected_vehicle].duplicate(true)
-	spec["power"] = float(spec.power) * (1.0 + int(upgrades.engine) * 0.12)
-	spec["suspension"] = float(spec.suspension) * (1.0 + int(upgrades.suspension) * 0.14)
-	spec["grip"] = float(spec.grip) * (1.0 + int(upgrades.tires) * 0.1)
+	var health_factor := lerpf(0.68, 1.0, condition / 100.0)
+	spec["power"] = float(spec.power) * (1.0 + int(upgrades.engine) * 0.12) * health_factor
+	spec["suspension"] = float(spec.suspension) * (1.0 + int(upgrades.suspension) * 0.14) * health_factor
+	spec["grip"] = float(spec.grip) * (1.0 + int(upgrades.tires) * 0.1) * health_factor
+	spec["speed"] = float(spec.speed) * (1.0 + int(upgrades.transmission) * 0.055)
 	spec["fuel_capacity"] = 100.0 + int(upgrades.fuel) * 18.0
+	spec["heat_multiplier"] = maxf(0.55, 1.0 - int(upgrades.cooling) * 0.09)
 	return spec
+
+func upgrade_cost(key: String) -> int:
+	var level := int(upgrades.get(key, 0))
+	var base := {"engine":140,"suspension":125,"tires":115,"fuel":105,"transmission":165,"cooling":130}
+	return int(base.get(key, 120)) + level * (125 + level * 24)
+
+func repair_cost() -> int:
+	return int(ceil((100.0 - condition) * 1.35))
