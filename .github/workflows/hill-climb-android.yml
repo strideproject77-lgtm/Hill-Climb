@@ -109,14 +109,19 @@ jobs:
           APK="$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
           WORK="$(mktemp -d)"
           trap 'rm -rf "$WORK"' EXIT
+          if ! command -v readelf >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y --no-install-recommends binutils
+          fi
           command -v readelf
           unzip -q "$APK" 'lib/*' -d "$WORK"
           mapfile -t LIBS < <(find "$WORK/lib" -type f -name '*.so' -print)
           test "${#LIBS[@]}" -gt 0
-          find "$WORK/lib" -mindepth 1 -maxdepth 1 -type d ! -name arm64-v8a -print -quit | grep -q . && {
-            echo "Unexpected non-ARM64 ABI found in APK" >&2
+          NON_ARM_DIR="$(find "$WORK/lib" -mindepth 1 -maxdepth 1 -type d ! -name arm64-v8a -print -quit)"
+          if [ -n "$NON_ARM_DIR" ]; then
+            echo "Unexpected non-ARM64 ABI found: $NON_ARM_DIR" >&2
             exit 1
-          } || true
+          fi
           for LIB in "${LIBS[@]}"; do
             case "$LIB" in
               */lib/arm64-v8a/*.so) ;;
