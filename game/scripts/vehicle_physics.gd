@@ -42,6 +42,8 @@ func reset(start_x: float, ground: Callable) -> void:
 	landing_g = 0.0
 func step(dt: float, gas: float, brake: float, lean: float, ground: Callable, spec: Dictionary) -> void:
 	var mass: float = maxf(0.55, float(spec.get("mass", 1.0)))
+	var gravity_scale: float = float(spec.get("gravity_scale", 1.0))
+	var heat_multiplier: float = float(spec.get("heat_multiplier", 1.0))
 	var power: float = float(spec.get("power", 1.0))
 	var suspension: float = float(spec.get("suspension", 1.0))
 	var grip: float = float(spec.get("grip", 1.0)) * (1.0 - tire_wear * 0.42)
@@ -93,7 +95,7 @@ func step(dt: float, gas: float, brake: float, lean: float, ground: Callable, sp
 	var drag := 0.0018 * forward_speed * absf(forward_speed)
 	var acceleration := (engine_force - drag - signf(forward_speed) * brake_force) / mass
 	vx += forward.x * acceleration * dt
-	vy += GRAVITY * dt + forward.y * acceleration * dt - spring_force * dt / mass
+	vy += GRAVITY * gravity_scale * dt + forward.y * acceleration * dt - spring_force * dt / mass
 	if grounded:
 		lateral_speed *= 1.0 - clampf(grip * (2.4 + contacts * 0.55) * dt, 0.0, 1.0)
 		var corrected := forward * Vector2(vx, vy).dot(forward) + lateral_axis * lateral_speed
@@ -120,9 +122,9 @@ func step(dt: float, gas: float, brake: float, lean: float, ground: Callable, sp
 			if not was_grounded:
 				damage = minf(MAX_DAMAGE, damage + maxf(0.0, impact - 390.0) * 0.026)
 	if gas > 0.05:
-		engine_heat = minf(120.0, engine_heat + (8.0 + power * 2.5) * gas * dt)
+		engine_heat = minf(120.0, engine_heat + (8.0 + power * 2.5) * gas * heat_multiplier * dt)
 	else:
-		engine_heat = maxf(0.0, engine_heat - 5.8 * dt)
+		engine_heat = maxf(0.0, engine_heat - 5.8 / maxf(0.5, heat_multiplier) * dt)
 	engine_rpm = lerpf(engine_rpm, 900.0 + absf(forward_speed) * 8.5 + gas * 2600.0, minf(1.0, dt * 4.5))
 	wheel_rotation = wrapf(wheel_rotation + vx * dt / WHEEL_RADIUS, -TAU, TAU)
 	vx = clampf(vx, -max_speed * 0.3, max_speed)
