@@ -84,24 +84,25 @@ jobs:
           test -s "$HOME/.config/godot/editor_settings-4.4.tres"
           echo "JAVA_HOME=$JAVA_HOME_DIR"
           echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "Godot editor settings:"
           cat "$HOME/.config/godot/editor_settings-4.4.tres"
           ls -lh "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
       - name: Export APK
         run: |
           set -eux
-          mkdir -p game/build
-          godot --headless --verbose --path game --export-debug "Android" build/hill-climb-adventure.apk
+          mkdir -p "$GITHUB_WORKSPACE/game/build"
+          test -d "$GITHUB_WORKSPACE/game/build"
+          godot --headless --verbose --path "$GITHUB_WORKSPACE/game" --export-debug "Android" "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
+          test -s "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
       - name: Verify APK archive
         run: |
           set -eux
-          test -s game/build/hill-climb-adventure.apk
-          unzip -t game/build/hill-climb-adventure.apk
-          unzip -l game/build/hill-climb-adventure.apk | grep -E 'lib/arm64-v8a/.*\.so'
+          test -s "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
+          unzip -t "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
+          unzip -l "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk" | grep -E 'lib/arm64-v8a/.*\.so'
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hill-climb-adventure-android-arm64
+          name: ridgeline-offroad-android-arm64
           path: game/build/hill-climb-adventure.apk
           if-no-files-found: error
           retention-days: 14
