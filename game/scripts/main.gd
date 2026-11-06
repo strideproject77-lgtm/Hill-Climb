@@ -709,7 +709,7 @@ func _draw_upgrades() -> void:
 	for i in range(keys.size()):
 		var y := 150.0 + float(i) * 48.0
 		var level := int(profile.upgrades[keys[i]])
-		var cost := profile.upgrade_cost(keys[i])
+		var cost: int = int(profile.upgrade_cost(keys[i]))
 		_panel(Rect2(220, y, 520, 42), Color("#29404a"))
 		_text(names[i], Vector2(235, y + 27), 14, Color.WHITE)
 		for k in range(5):
