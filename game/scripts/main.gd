@@ -6,9 +6,11 @@ const COIN_SPACING := 205.0
 const FUEL_SPACING := 1320.0
 const PhysicsScript = preload("res://scripts/vehicle_physics.gd")
 const ProfileScript = preload("res://scripts/game_profile.gd")
+const AntiCheatScript = preload("res://scripts/anti_cheat.gd")
 
 var car
 var profile
+var anti_cheat
 var font: Font
 var game_state := "home"
 var camera_x := 0.0
@@ -26,12 +28,23 @@ var lean_right := false
 var crash_flash := 0.0
 var last_crash_speed := 0.0
 var best_distance := 0
+var run_elapsed := 0.0
+var run_reward := 0
+var run_gems := 0
+var fair_play_valid := true
+var achievement_notice := ""
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
 	car = PhysicsScript.new()
 	profile = ProfileScript.new()
+	anti_cheat = AntiCheatScript.new()
 	profile.load_profile()
+	if not anti_cheat.validate_profile(profile.bank, profile.gems, profile.selected_vehicle, profile.selected_map, profile.VEHICLES.size(), profile.MAPS.size()):
+		profile.bank = 0
+		profile.gems = 0
+		profile.selected_vehicle = 0
+		profile.selected_map = 0
 	best_distance = profile.best_distance
 	_reset_run()
 	set_process(true)
@@ -64,6 +77,11 @@ func _reset_run() -> void:
 	camera_x = 0.0
 	run_distance = 0.0
 	run_coins = 0
+	run_elapsed = 0.0
+	run_reward = 0
+	run_gems = 0
+	fair_play_valid = true
+	achievement_notice = ""
 	fuel_capacity = float(profile.vehicle_spec().fuel_capacity)
 	fuel = fuel_capacity
 	coin_pickups.clear()
@@ -84,9 +102,15 @@ func _update_run(dt: float) -> void:
 		spec["grip"] = float(spec.grip) * 0.68
 	elif profile.selected_map == 1:
 		spec["grip"] = float(spec.grip) * 0.92
+		spec["fuel_multiplier"] = 1.12
+	elif profile.selected_map == 3:
+		spec["heat_multiplier"] = float(spec.heat_multiplier) * 1.65
+	elif profile.selected_map == 4:
+		spec["gravity_scale"] = 0.32
 	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
 	if gas_pressed and fuel > 0.0:
-		fuel = maxf(0.0, fuel - (0.58 + float(spec.power) * 0.17 + car.engine_heat * 0.0018) * dt)
+		fuel = maxf(0.0, fuel - (0.58 + float(spec.power) * 0.17 + car.engine_heat * 0.0018) * float(spec.get("fuel_multiplier", 1.0)) * dt)
+	run_elapsed += dt
 	run_distance = maxf(run_distance, (car.x - 180.0) / 10.0)
 	camera_x = maxf(0.0, car.x - 330.0)
 	_collect_items()
@@ -120,13 +144,43 @@ func _collect_items() -> void:
 			fuel = minf(fuel_capacity, fuel + fuel_capacity * 0.34)
 
 func _finish_run() -> void:
+	if game_state != "playing":
+		return
 	game_state = "results"
 	_clear_controls()
-	var reward := run_coins + int(run_distance / 80.0)
-	profile.bank += reward
-	profile.best_distance = maxi(profile.best_distance, int(run_distance))
+	var spec: Dictionary = profile.vehicle_spec()
+	fair_play_valid = anti_cheat.validate_run(run_distance, run_coins, run_elapsed, absf(car.vx), float(spec.speed))
+	run_reward = anti_cheat.sanitize_reward(run_coins + int(run_distance / 80.0), fair_play_valid)
+	if fair_play_valid:
+		profile.bank = clampi(profile.bank + run_reward, 0, 2000000)
+		profile.stats["runs"] = int(profile.stats.runs) + 1
+		profile.stats["total_distance"] = int(profile.stats.total_distance) + int(run_distance)
+		profile.stats["total_coins"] = int(profile.stats.total_coins) + run_coins
+		profile.condition = maxf(0.0, profile.condition - car.damage * 0.32)
+		profile.best_distance = maxi(profile.best_distance, int(run_distance))
+		_update_achievements()
 	best_distance = profile.best_distance
 	profile.save_profile()
+
+func _update_achievements() -> void:
+	for item in profile.ACHIEVEMENTS:
+		var id := str(item.id)
+		if profile.achievements.has(id):
+			continue
+		var unlocked_now := false
+		match id:
+			"first_run": unlocked_now = int(profile.stats.runs) >= 1
+			"distance_1000": unlocked_now = int(profile.stats.total_distance) >= 1000
+			"distance_5000": unlocked_now = int(profile.stats.total_distance) >= 5000
+			"coin_100": unlocked_now = int(profile.stats.total_coins) >= 100
+			"runs_10": unlocked_now = int(profile.stats.runs) >= 10
+			"clean_run": unlocked_now = car.damage < 10.0
+		if unlocked_now:
+			profile.achievements.append(id)
+			var reward := int(item.reward)
+			profile.gems = clampi(profile.gems + reward, 0, 100000)
+			run_gems += reward
+			achievement_notice = str(item.name)
 
 func _clear_controls() -> void:
 	touch_points.clear()
@@ -189,21 +243,23 @@ func _update_controls() -> void:
 func _handle_menu_press(pos: Vector2) -> void:
 	match game_state:
 		"home":
-			if Rect2(445, 340, 230, 78).has_point(pos):
+			if Rect2(385, 335, 190, 76).has_point(pos):
 				_reset_run()
 				game_state = "playing"
-			elif Rect2(45, 340, 180, 78).has_point(pos):
+			elif Rect2(35, 335, 165, 76).has_point(pos):
 				game_state = "garage"
-			elif Rect2(245, 340, 180, 78).has_point(pos):
+			elif Rect2(210, 335, 165, 76).has_point(pos):
 				game_state = "maps"
-			elif Rect2(695, 340, 220, 78).has_point(pos):
+			elif Rect2(585, 335, 165, 76).has_point(pos):
 				game_state = "upgrades"
+			elif Rect2(760, 335, 165, 76).has_point(pos):
+				game_state = "achievements"
 		"maps":
 			if Rect2(35, 445, 170, 62).has_point(pos):
 				game_state = "home"
 			else:
 				for i in range(profile.MAPS.size()):
-					if Rect2(170.0 + float(i) * 215.0, 215, 190, 190).has_point(pos):
+					if _map_card_rect(i).has_point(pos):
 						profile.selected_map = i
 						profile.save_profile()
 						break
@@ -218,14 +274,20 @@ func _handle_menu_press(pos: Vector2) -> void:
 				profile.save_profile()
 			elif Rect2(350, 390, 260, 72).has_point(pos):
 				_select_or_buy_vehicle()
+			elif Rect2(635, 390, 190, 72).has_point(pos):
+				_repair_vehicle()
 		"upgrades":
 			if Rect2(35, 445, 170, 62).has_point(pos):
 				game_state = "home"
 			else:
-				for i in range(4):
-					if Rect2(250, 205.0 + float(i) * 58.0, 470, 48).has_point(pos):
-						_buy_upgrade(["engine", "suspension", "tires", "fuel"][i])
+				var upgrade_keys := ["engine", "suspension", "tires", "fuel", "transmission", "cooling"]
+				for i in range(upgrade_keys.size()):
+					if Rect2(220, 174.0 + float(i) * 49.0, 520, 43).has_point(pos):
+						_buy_upgrade(upgrade_keys[i])
 						break
+		"achievements":
+			if Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
 		"results":
 			if Rect2(350, 370, 260, 72).has_point(pos):
 				_reset_run()
@@ -244,13 +306,22 @@ func _select_or_buy_vehicle() -> void:
 		profile.save_profile()
 
 func _buy_upgrade(key: String) -> void:
-	var level := int(profile.upgrades[key])
+	var level := int(profile.upgrades.get(key, 0))
 	if level >= 5:
 		return
-	var cost := 120 + level * 145
+	var cost := profile.upgrade_cost(key)
 	if profile.bank >= cost:
 		profile.bank -= cost
 		profile.upgrades[key] = level + 1
+		profile.save_profile()
+
+func _repair_vehicle() -> void:
+	var cost := profile.repair_cost()
+	if cost <= 0:
+		return
+	if profile.bank >= cost:
+		profile.bank -= cost
+		profile.condition = 100.0
 		profile.save_profile()
 
 func _draw() -> void:
@@ -266,6 +337,7 @@ func _draw() -> void:
 		"maps": _draw_maps()
 		"upgrades": _draw_upgrades()
 		"results": _draw_results()
+		"achievements": _draw_achievements()
 
 func _draw_backdrop() -> void:
 	var palette: Dictionary = profile.MAPS[profile.selected_map]
@@ -409,54 +481,59 @@ func _draw_hud() -> void:
 func _draw_home() -> void:
 	_overlay()
 	_panel(Rect2(40, 42, 880, 440), Color("#17262e"))
-	_text("RIDGELINE", Vector2(480, 128), 56, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 169), 20, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("A new climb begins here", Vector2(480, 213), 18, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(45, 340, 180, 78), Color("#386d79"))
-	_text("GARAGE", Vector2(135, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(245, 340, 180, 78), Color("#4d7e77"))
-	_text("MAPS", Vector2(335, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(445, 340, 230, 78), Color("#d47a36"))
-	_text("START DRIVE", Vector2(560, 387), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(695, 340, 220, 78), Color("#536a7b"))
-	_text("UPGRADES", Vector2(805, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text("%s     BANK %d     BEST %dm" % [profile.MAPS[profile.selected_map].name, profile.bank, best_distance], Vector2(480, 455), 16, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("RIDGELINE", Vector2(480, 116), 54, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 157), 19, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Build your machine. Master every terrain.", Vector2(480, 203), 17, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_draw_showcase_vehicle(Vector2(480, 274), Color(str(profile.VEHICLES[profile.selected_vehicle].color)), profile.selected_vehicle)
+	var buttons := [{"rect":Rect2(35,335,165,76),"label":"GARAGE","color":"#386d79"},{"rect":Rect2(210,335,165,76),"label":"MAPS","color":"#4d7e77"},{"rect":Rect2(385,335,190,76),"label":"START DRIVE","color":"#d47a36"},{"rect":Rect2(585,335,165,76),"label":"UPGRADES","color":"#536a7b"},{"rect":Rect2(760,335,165,76),"label":"TROPHIES","color":"#75649a"}]
+	for item in buttons:
+		_panel(item.rect, Color(str(item.color)))
+		_text(str(item.label), item.rect.position + Vector2(item.rect.size.x * 0.5, 47), 16, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("%s   COINS %d   GEMS %d   BEST %dm" % [profile.MAPS[profile.selected_map].name, profile.bank, profile.gems, best_distance], Vector2(480, 455), 15, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+
+func _map_card_rect(index: int) -> Rect2:
+	return Rect2(150.0 + float(index % 3) * 220.0, 145.0 + float(index / 3) * 150.0, 200.0, 132.0)
 
 func _draw_maps() -> void:
 	_overlay()
 	_panel(Rect2(105, 35, 750, 465), Color("#17262e"))
-	_text("CHOOSE YOUR TERRAIN", Vector2(480, 100), 38, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("CHOOSE YOUR TERRAIN", Vector2(480, 94), 34, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
 	for i in range(profile.MAPS.size()):
 		var map_data: Dictionary = profile.MAPS[i]
-		var x := 170.0 + float(i) * 215.0
-		var sky := Color(str(map_data.sky))
-		_panel(Rect2(x, 215, 190, 190), Color("#2b414a"))
-		draw_rect(Rect2(x + 12, 227, 166, 86), sky)
+		var rect := _map_card_rect(i)
+		var x := rect.position.x
+		var y := rect.position.y
+		_panel(rect, Color("#d47a36") if profile.selected_map == i else Color("#2b414a"))
+		draw_rect(Rect2(x + 9, y + 9, 182, 65), Color(str(map_data.sky)))
 		var earth := Color(str(map_data.earth))
-		draw_colored_polygon(PackedVector2Array([Vector2(x + 12, 300), Vector2(x + 48, 270), Vector2(x + 84, 291), Vector2(x + 125, 260), Vector2(x + 178, 295), Vector2(x + 178, 313), Vector2(x + 12, 313)]), earth)
-		_text(str(map_data.name), Vector2(x + 95, 345), 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		_text("SELECTED" if profile.selected_map == i else "TAP TO SELECT", Vector2(x + 95, 380), 13, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text(str(map_data.subtitle), Vector2(480, 435), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+		draw_colored_polygon(PackedVector2Array([Vector2(x + 9, y + 65), Vector2(x + 48, y + 40), Vector2(x + 84, y + 58), Vector2(x + 125, y + 35), Vector2(x + 191, y + 65), Vector2(x + 191, y + 74), Vector2(x + 9, y + 74)]), earth)
+		_text(str(map_data.name), Vector2(x + 100, y + 99), 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		_text("SELECTED" if profile.selected_map == i else "TAP TO SELECT", Vector2(x + 100, y + 120), 11, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text(str(profile.MAPS[profile.selected_map].subtitle), Vector2(590, 462), 13, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
 	_back_button()
 
 func _draw_garage() -> void:
 	_overlay()
 	_panel(Rect2(100, 30, 760, 470), Color("#17262e"))
-	_text("VEHICLE GARAGE", Vector2(480, 90), 37, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("VEHICLE GARAGE", Vector2(480, 78), 35, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
 	var spec: Dictionary = profile.VEHICLES[profile.selected_vehicle]
-	_text("%02d / %02d" % [profile.selected_vehicle + 1, profile.VEHICLES.size()], Vector2(480, 132), 16, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_showcase_vehicle(Vector2(480, 235), Color(str(spec.color)), profile.selected_vehicle)
-	_text(str(spec.name), Vector2(480, 320), 29, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text(str(spec.description), Vector2(480, 350), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("POWER %.1f     SUSPENSION %.1f     GRIP %.1f" % [float(spec.power), float(spec.suspension), float(spec.grip)], Vector2(480, 382), 15, Color("#e1d7b6"), HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(235, 280, 100, 70), Color("#3c6874"))
-	_text("<", Vector2(285, 326), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(625, 280, 100, 70), Color("#3c6874"))
-	_text(">", Vector2(675, 326), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("%02d / %02d" % [profile.selected_vehicle + 1, profile.VEHICLES.size()], Vector2(480, 116), 15, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_draw_showcase_vehicle(Vector2(480, 215), Color(str(spec.color)), profile.selected_vehicle)
+	_text(str(spec.name), Vector2(480, 302), 27, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text(str(spec.description), Vector2(480, 330), 15, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("POWER %.1f   SUSPENSION %.1f   GRIP %.1f" % [float(spec.power), float(spec.suspension), float(spec.grip)], Vector2(480, 356), 14, Color("#e1d7b6"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("CONDITION  %d%%" % int(profile.condition), Vector2(480, 382), 14, Color("#e6a58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(235, 255, 100, 70), Color("#3c6874"))
+	_text("<", Vector2(285, 301), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(625, 255, 100, 70), Color("#3c6874"))
+	_text(">", Vector2(675, 301), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	var owned := profile.unlocked.has(profile.selected_vehicle)
 	_panel(Rect2(350, 390, 260, 70), Color("#d47a36") if owned else Color("#4d8b65"))
-	_text("SELECT VEHICLE" if owned else "UNLOCK  %d" % int(spec.price), Vector2(480, 433), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text("BANK  %d" % profile.bank, Vector2(790, 465), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("SELECT VEHICLE" if owned else "UNLOCK  %d" % int(spec.price), Vector2(480, 433), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var repair := profile.repair_cost()
+	_panel(Rect2(635, 390, 190, 70), Color("#4d8b65") if repair > 0 and profile.bank >= repair else Color("#344b50"))
+	_text("REPAIR  %d" % repair if repair > 0 else "FULL HEALTH", Vector2(730, 433), 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("BANK %d  |  GEMS %d" % [profile.bank, profile.gems], Vector2(790, 478), 14, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
 	_back_button()
 
 func _draw_showcase_vehicle(center: Vector2, color: Color, index: int) -> void:
@@ -472,33 +549,51 @@ func _draw_showcase_vehicle(center: Vector2, color: Color, index: int) -> void:
 func _draw_upgrades() -> void:
 	_overlay()
 	_panel(Rect2(125, 35, 710, 465), Color("#17262e"))
-	_text("WORKSHOP UPGRADES", Vector2(480, 92), 37, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Improve your machine. Each level changes real handling.", Vector2(480, 128), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
-	var names := ["ENGINE", "SUSPENSION", "TIRES & GRIP", "FUEL TANK"]
-	var keys := ["engine", "suspension", "tires", "fuel"]
-	for i in range(4):
-		var y := 205.0 + float(i) * 58.0
+	_text("WORKSHOP UPGRADES", Vector2(480, 82), 34, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Six systems. Five levels each. Every upgrade changes handling.", Vector2(480, 112), 14, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	var names := ["ENGINE POWER", "SUSPENSION", "TIRE GRIP", "FUEL CAPACITY", "TRANSMISSION", "ENGINE COOLING"]
+	var keys := ["engine", "suspension", "tires", "fuel", "transmission", "cooling"]
+	for i in range(keys.size()):
+		var y := 150.0 + float(i) * 48.0
 		var level := int(profile.upgrades[keys[i]])
-		var cost := 120 + level * 145
-		_panel(Rect2(250, y, 470, 48), Color("#29404a"))
-		_text(names[i], Vector2(270, y + 30), 17, Color.WHITE)
+		var cost := profile.upgrade_cost(keys[i])
+		_panel(Rect2(220, y, 520, 42), Color("#29404a"))
+		_text(names[i], Vector2(235, y + 27), 14, Color.WHITE)
 		for k in range(5):
-			draw_rect(Rect2(430 + float(k) * 27.0, y + 15, 19, 18), Color("#e7b24a") if k < level else Color("#52656a"))
-		_text("MAX" if level >= 5 else "%d" % cost, Vector2(690, y + 30), 15, Color("#f0d28b"), HORIZONTAL_ALIGNMENT_RIGHT)
-	_text("BANK  %d" % profile.bank, Vector2(790, 465), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+			draw_rect(Rect2(445 + float(k) * 24.0, y + 12, 17, 17), Color("#e7b24a") if k < level else Color("#52656a"))
+		_text("MAX" if level >= 5 else "%d" % cost, Vector2(720, y + 27), 13, Color("#f0d28b"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_text("BANK %d  |  GEMS %d" % [profile.bank, profile.gems], Vector2(780, 470), 14, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_back_button()
+
+func _draw_achievements() -> void:
+	_overlay()
+	_panel(Rect2(130, 35, 700, 465), Color("#17262e"))
+	_text("CAREER TROPHIES", Vector2(480, 85), 35, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("GEMS %d   |   DRIVES %d   |   TOTAL DISTANCE %dm" % [profile.gems, int(profile.stats.runs), int(profile.stats.total_distance)], Vector2(480, 118), 14, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	for i in range(profile.ACHIEVEMENTS.size()):
+		var item: Dictionary = profile.ACHIEVEMENTS[i]
+		var y := 145.0 + float(i) * 48.0
+		var unlocked := profile.achievements.has(str(item.id))
+		_panel(Rect2(205, y, 550, 42), Color("#355b50") if unlocked else Color("#293c46"))
+		_text(str(item.name), Vector2(220, y + 18), 14, Color.WHITE)
+		_text(str(item.description), Vector2(220, y + 34), 11, Color("#c0d0d0"))
+		_text("CLAIMED" if unlocked else "+%d GEMS" % int(item.reward), Vector2(735, y + 26), 12, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_RIGHT)
 	_back_button()
 
 func _draw_results() -> void:
 	_overlay()
-	_panel(Rect2(260, 60, 440, 420), Color("#17262e"))
-	_text("RUN FINISHED", Vector2(480, 130), 38, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("%dm" % int(run_distance), Vector2(480, 205), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text("DISTANCE", Vector2(480, 235), 15, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Coins collected  %d" % run_coins, Vector2(480, 285), 20, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Career bank  %d" % profile.bank, Vector2(480, 320), 18, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
-	_text("Vehicle condition  %d%%" % int(100.0 - car.damage), Vector2(480, 348), 15, Color("#e6a58a"), HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(350, 370, 260, 72), Color("#d47a36"))
-	_text("DRIVE AGAIN", Vector2(480, 415), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(245, 48, 470, 445), Color("#17262e"))
+	_text("RUN FINISHED", Vector2(480, 105), 36, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("%dm" % int(run_distance), Vector2(480, 168), 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("DISTANCE", Vector2(480, 195), 14, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Coins collected  %d" % run_coins, Vector2(480, 238), 18, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Run reward  +%d coins" % run_reward if fair_play_valid else "REWARD HELD - RUN VALIDATION", Vector2(480, 270), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Achievement gems  +%d" % run_gems, Vector2(480, 298), 15, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Bank %d   Gems %d" % [profile.bank, profile.gems], Vector2(480, 326), 16, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Vehicle condition  %d%%" % int(profile.condition), Vector2(480, 350), 14, Color("#e6a58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text(achievement_notice, Vector2(480, 370), 12, Color("#83d7e0"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(350, 390, 260, 62), Color("#d47a36"))
+	_text("DRIVE AGAIN", Vector2(480, 430), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_back_button()
 
 func _overlay() -> void:
