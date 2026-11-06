@@ -77,28 +77,25 @@ func _ready() -> void:
 	startup_error = ""
 	queue_redraw()
 
+# Every biome uses one shared, deterministic endless terrain generator.
+# World-space sampling means the ground stays identical for the same seed and
+# coordinates, regardless of camera position or selected map.
+func _terrain_noise(world_x: float, cell_size: float, seed_value: float) -> float:
+	var lattice := floori(world_x / cell_size)
+	var blend := fposmod(world_x, cell_size) / cell_size
+	blend = blend * blend * (3.0 - 2.0 * blend)
+	var h0 := fposmod(sin(float(lattice) * 127.1 + seed_value * 311.7) * 43758.5453, 1.0)
+	var h1 := fposmod(sin(float(lattice + 1) * 127.1 + seed_value * 311.7) * 43758.5453, 1.0)
+	return lerpf(h0 * 2.0 - 1.0, h1 * 2.0 - 1.0, blend)
+
 func ground_height(world_x: float) -> float:
-	match profile.selected_map:
-		1:
-			var dune_a := sin(world_x * 0.00155 + 0.4) * 78.0
-			var dune_b := sin(world_x * 0.0032 + 1.1) * 31.0
-			var dune_ripple := sin(world_x * 0.009) * 5.0
-			return 410.0 - dune_a - dune_b - dune_ripple
-		2:
-			var ice_hill := sin(world_x * 0.0018) * 83.0
-			var ice_roll := sin(world_x * 0.0048 + 1.5) * 54.0
-			var ice_cliff := pow(maxf(0.0, sin(world_x * 0.0008 + 0.8)), 4.0) * 52.0
-			return 402.0 - ice_hill - ice_roll - ice_cliff
-		3:
-			return 405.0 - sin(world_x * 0.0017) * 92.0 - sin(world_x * 0.0052) * 58.0 - pow(maxf(0.0, sin(world_x * 0.0009)), 3.0) * 66.0
-		4:
-			return 420.0 - sin(world_x * 0.0013) * 112.0 - sin(world_x * 0.0038 + 0.5) * 70.0
-		_:
-			var long_hill := sin(world_x * 0.0019 + 0.5) * 66.0
-			var rolling := sin(world_x * 0.0041) * 58.0
-			var sharp := sin(world_x * 0.0105 + 1.3) * 19.0
-			var ridge := pow(maxf(0.0, sin(world_x * 0.00072 + 0.4)), 3.0) * 48.0
-			return 405.0 - long_hill - rolling - sharp - ridge
+	# Layered smooth value-noise creates continuous hills at every distance.
+	# The same height function is shared by all five map themes.
+	var long_hills := _terrain_noise(world_x, 1180.0, 1.0) * 54.0
+	var rolling_hills := _terrain_noise(world_x, 430.0, 2.0) * 29.0
+	var short_bumps := _terrain_noise(world_x, 155.0, 3.0) * 11.0
+	var trail_texture := _terrain_noise(world_x, 58.0, 4.0) * 3.5
+	return 405.0 - long_hills - rolling_hills - short_bumps - trail_texture
 
 func _reset_run() -> void:
 	car.reset(180.0, Callable(self, "ground_height"))
@@ -178,6 +175,14 @@ func _update_run(dt: float) -> void:
 
 func _collect_items() -> void:
 	var coin_index := int(floor(car.x / COIN_SPACING))
+	# Infinite runs must not retain every pickup ever passed by the camera.
+	for collected_coin in coin_pickups.keys():
+		if int(collected_coin) < coin_index - 3:
+			coin_pickups.erase(collected_coin)
+	var fuel_index := int(floor(car.x / FUEL_SPACING))
+	for collected_fuel in fuel_pickups.keys():
+		if int(collected_fuel) < fuel_index - 2:
+			fuel_pickups.erase(collected_fuel)
 	for i in range(maxi(0, coin_index - 2), coin_index + 4):
 		if coin_pickups.has(i):
 			continue
@@ -186,7 +191,6 @@ func _collect_items() -> void:
 		if Vector2(car.x, car.y).distance_to(Vector2(px, py)) < 67.0:
 			coin_pickups[i] = true
 			run_coins += 1
-	var fuel_index := int(floor(car.x / FUEL_SPACING))
 	for j in range(maxi(0, fuel_index - 1), fuel_index + 2):
 		if fuel_pickups.has(j):
 			continue
