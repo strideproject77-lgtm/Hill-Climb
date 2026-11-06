@@ -148,8 +148,8 @@ func _update_run(dt: float) -> void:
 		spec["heat_multiplier"] = float(spec.heat_multiplier) * 1.65
 	elif profile.selected_map == 4:
 		spec["gravity_scale"] = 0.32
-	var was_grounded := car.grounded
-	var old_angle := car.angle
+	var was_grounded: bool = bool(car.grounded)
+	var old_angle: float = float(car.angle)
 	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
 	_update_stunts(dt, was_grounded, old_angle)
 	if gas_pressed and fuel > 0.0:
@@ -168,7 +168,7 @@ func _update_run(dt: float) -> void:
 	camera_x = maxf(0.0, car.x - 330.0)
 	_collect_items()
 	crash_flash = maxf(0.0, crash_flash - dt)
-	var upside_down := absf(wrapf(car.angle, -PI, PI)) > 2.15 and car.grounded
+	var upside_down: bool = absf(wrapf(float(car.angle), -PI, PI)) > 2.15 and bool(car.grounded)
 	if upside_down:
 		crash_flash += dt
 	else:
@@ -404,14 +404,14 @@ func _buy_upgrade(key: String) -> void:
 	var level := int(profile.upgrades.get(key, 0))
 	if level >= 5:
 		return
-	var cost := profile.upgrade_cost(key)
+	var cost: int = int(profile.upgrade_cost(key))
 	if profile.bank >= cost:
 		profile.bank -= cost
 		profile.upgrades[key] = level + 1
 		profile.save_profile()
 
 func _repair_vehicle() -> void:
-	var cost := profile.repair_cost()
+	var cost: int = int(profile.repair_cost())
 	if cost <= 0:
 		return
 	if profile.bank >= cost:
@@ -486,7 +486,7 @@ func _draw_landscape() -> void:
 		draw_line(Vector2(x1, y1), Vector2(x2, y2), surface, 12.0, true)
 		draw_line(Vector2(x1, y1 + 7), Vector2(x2, y2 + 7), surface.lightened(0.28), 2.0, true)
 	for i in range(14):
-		var wx := float(i) * 390.0 + 180.0
+		var wx: float = float(i) * 390.0 + 180.0
 		var sx := wx - camera_x
 		if sx > -40.0 and sx < W + 40.0:
 			var gy := ground_height(wx)
@@ -513,7 +513,7 @@ func _draw_collectibles() -> void:
 	for i in range(maxi(0, start), start + 8):
 		if coin_pickups.has(i):
 			continue
-		var wx := 300.0 + float(i) * COIN_SPACING
+		var wx: float = 300.0 + float(i) * COIN_SPACING
 		var sx := wx - camera_x
 		if sx < -30.0 or sx > W + 30.0:
 			continue
@@ -539,9 +539,9 @@ func _draw_vehicle() -> void:
 	var wheelbase := 57.0
 	var wheel_radius := 29.0 if profile.selected_vehicle in [3, 5, 6] else (18.0 if profile.selected_vehicle == 4 else 23.0)
 	for side in [-1.0, 1.0]:
-		var wx := side * wheelbase
-		var compression := car.front_compression if side > 0.0 else car.rear_compression
-		var wy := 45.0 + compression * 8.0
+		var wx: float = side * wheelbase
+		var compression: float = float(car.front_compression) if side > 0.0 else float(car.rear_compression)
+		var wy: float = 45.0 + compression * 8.0
 		draw_line(Vector2(wx, 24), Vector2(wx, wy - wheel_radius + 3.0), Color("#333b42"), 7.0)
 		draw_circle(Vector2(wx, wy), wheel_radius, Color("#202a30"))
 		draw_circle(Vector2(wx, wy), wheel_radius * 0.55, Color("#aab8ba"))
@@ -680,10 +680,10 @@ func _draw_garage() -> void:
 	_text("<", Vector2(285, 301), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_panel(Rect2(625, 255, 100, 70), Color("#3c6874"))
 	_text(">", Vector2(675, 301), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	var owned := profile.unlocked.has(profile.selected_vehicle)
+	var owned: bool = profile.unlocked.has(profile.selected_vehicle)
 	_panel(Rect2(350, 390, 260, 70), Color("#d47a36") if owned else Color("#4d8b65"))
 	_text("SELECT VEHICLE" if owned else "UNLOCK  %d" % int(spec.price), Vector2(480, 433), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	var repair := profile.repair_cost()
+	var repair: int = int(profile.repair_cost())
 	_panel(Rect2(635, 390, 190, 70), Color("#4d8b65") if repair > 0 and profile.bank >= repair else Color("#344b50"))
 	_text("REPAIR  %d" % repair if repair > 0 else "FULL HEALTH", Vector2(730, 433), 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_text("BANK %d  |  GEMS %d" % [profile.bank, profile.gems], Vector2(790, 478), 14, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
@@ -726,7 +726,7 @@ func _draw_achievements() -> void:
 	for i in range(profile.ACHIEVEMENTS.size()):
 		var item: Dictionary = profile.ACHIEVEMENTS[i]
 		var y := 145.0 + float(i) * 48.0
-		var unlocked := profile.achievements.has(str(item.id))
+		var unlocked: bool = profile.achievements.has(str(item.id))
 		_panel(Rect2(205, y, 550, 42), Color("#355b50") if unlocked else Color("#293c46"))
 		_text(str(item.name), Vector2(220, y + 18), 14, Color.WHITE)
 		_text(str(item.description), Vector2(220, y + 34), 11, Color("#c0d0d0"))
@@ -744,8 +744,8 @@ func _draw_missions() -> void:
 		var mission: Dictionary = profile.DAILY_MISSIONS[i]
 		var y := 205.0 + float(i) * 72.0
 		var progress := float(profile.mission_progress.get(str(mission.id), 0.0))
-		var complete := profile.mission_complete(mission)
-		var claimed := profile.mission_claimed.has(str(mission.id))
+		var complete: bool = bool(profile.mission_complete(mission))
+		var claimed: bool = profile.mission_claimed.has(str(mission.id))
 		_panel(Rect2(210, y, 540, 60), Color("#3c6655") if complete else Color("#293e48"))
 		_text(str(mission.name), Vector2(228, y + 22), 15, Color.WHITE)
 		_text(str(mission.description), Vector2(228, y + 43), 12, Color("#c2d2d2"))
