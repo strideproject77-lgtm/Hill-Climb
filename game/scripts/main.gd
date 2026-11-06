@@ -47,12 +47,15 @@ var startup_error := ""
 
 func _ready() -> void:
 	set_process(true)
+	# Android exports can start without ThemeDB's fallback font being ready.
+	# Use an OS-backed font as a second path instead of aborting the game.
 	font = ThemeDB.fallback_font
 	if font == null:
-		startup_error = "Font service is unavailable."
-		push_error("Stride startup: ThemeDB fallback font is unavailable.")
-		queue_redraw()
-		return
+		var system_font := SystemFont.new()
+		system_font.font_names = PackedStringArray(["Roboto", "Noto Sans", "sans-serif"])
+		font = system_font
+	if font == null:
+		push_error("Stride startup: no usable font; continuing with graphics-only diagnostics.")
 	car = PhysicsScript.new()
 	profile = ProfileScript.new()
 	anti_cheat = AntiCheatScript.new()
@@ -419,12 +422,20 @@ func _repair_vehicle() -> void:
 func _draw() -> void:
 	if font == null:
 		font = ThemeDB.fallback_font
-	if profile == null or car == null or font == null or profile.MAPS.is_empty() or profile.VEHICLES.is_empty():
+	if font == null:
+		var system_font := SystemFont.new()
+		system_font.font_names = PackedStringArray(["Roboto", "Noto Sans", "sans-serif"])
+		font = system_font
+	if profile == null or car == null or profile.MAPS.is_empty() or profile.VEHICLES.is_empty():
 		draw_rect(Rect2(0, 0, W, H), Color("#182631"))
-		var fallback_font: Font = ThemeDB.fallback_font
-		if fallback_font != null:
-			draw_string(fallback_font, Vector2(0, 245), "HILL CLIMB", HORIZONTAL_ALIGNMENT_CENTER, W, 34, Color("#f0b44b"))
-			draw_string(fallback_font, Vector2(0, 282), startup_error if not startup_error.is_empty() else "INITIALIZING GAME...", HORIZONTAL_ALIGNMENT_CENTER, W, 17, Color("#d6e0df"))
+		draw_rect(Rect2(0, 0, W, 6), Color("#e6a64d"))
+		# Keep a visible diagnostic even if every font backend fails.
+		draw_rect(Rect2(300, 215, 360, 110), Color("#263b43"))
+		if font != null:
+			draw_string(font, Vector2(0, 258), "STRIDE STARTUP", HORIZONTAL_ALIGNMENT_CENTER, W, 27, Color("#f0b44b"))
+			draw_string(font, Vector2(0, 294), startup_error if not startup_error.is_empty() else "INITIALIZING GAME...", HORIZONTAL_ALIGNMENT_CENTER, W, 16, Color("#d6e0df"))
+		else:
+			draw_rect(Rect2(390, 250, 180, 8), Color("#f0b44b"))
 		return
 	if profile.selected_map < 0 or profile.selected_map >= profile.MAPS.size():
 		profile.selected_map = 0
