@@ -1,0 +1,41 @@
+name: Hill Climb Android APK
+
+on:
+  push:
+    branches: [hill-climb-game]
+    paths:
+      - 'game/**'
+      - '.github/workflows/hill-climb-android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    name: Export Android ARM64 APK
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout game branch
+        uses: actions/checkout@v4
+      - name: Verify Godot version
+        run: godot --version
+      - name: Validate project import
+        run: godot --headless --editor --path game --quit
+      - name: Export APK
+        run: |
+          mkdir -p game/build
+          godot --headless --path game --export-debug "Android" game/build/hill-climb-adventure.apk
+      - name: Verify APK archive
+        run: |
+          test -s game/build/hill-climb-adventure.apk
+          unzip -t game/build/hill-climb-adventure.apk
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hill-climb-adventure-android-arm64
+          path: game/build/hill-climb-adventure.apk
+          if-no-files-found: error
+          retention-days: 14
