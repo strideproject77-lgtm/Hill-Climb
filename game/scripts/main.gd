@@ -37,11 +37,23 @@ func _ready() -> void:
 	set_process(true)
 
 func ground_height(world_x: float) -> float:
-	var long_hill := sin(world_x * 0.0019 + 0.5) * 66.0
-	var rolling := sin(world_x * 0.0041) * 58.0
-	var sharp := sin(world_x * 0.0105 + 1.3) * 19.0
-	var ridge := pow(maxf(0.0, sin(world_x * 0.00072 + 0.4)), 3.0) * 48.0
-	return 405.0 - long_hill - rolling - sharp - ridge
+	match profile.selected_map:
+		1:
+			var dune_a := sin(world_x * 0.00155 + 0.4) * 78.0
+			var dune_b := sin(world_x * 0.0032 + 1.1) * 31.0
+			var dune_ripple := sin(world_x * 0.009) * 5.0
+			return 410.0 - dune_a - dune_b - dune_ripple
+		2:
+			var ice_hill := sin(world_x * 0.0018) * 83.0
+			var ice_roll := sin(world_x * 0.0048 + 1.5) * 54.0
+			var ice_cliff := pow(maxf(0.0, sin(world_x * 0.0008 + 0.8)), 4.0) * 52.0
+			return 402.0 - ice_hill - ice_roll - ice_cliff
+		_:
+			var long_hill := sin(world_x * 0.0019 + 0.5) * 66.0
+			var rolling := sin(world_x * 0.0041) * 58.0
+			var sharp := sin(world_x * 0.0105 + 1.3) * 19.0
+			var ridge := pow(maxf(0.0, sin(world_x * 0.00072 + 0.4)), 3.0) * 48.0
+			return 405.0 - long_hill - rolling - sharp - ridge
 
 func _reset_run() -> void:
 	car.reset(180.0, Callable(self, "ground_height"))
@@ -172,10 +184,21 @@ func _handle_menu_press(pos: Vector2) -> void:
 			if Rect2(350, 340, 260, 78).has_point(pos):
 				_reset_run()
 				game_state = "playing"
-			elif Rect2(85, 340, 220, 78).has_point(pos):
+			elif Rect2(45, 340, 180, 78).has_point(pos):
 				game_state = "garage"
-			elif Rect2(655, 340, 220, 78).has_point(pos):
+			elif Rect2(245, 340, 180, 78).has_point(pos):
+				game_state = "maps"
+			elif Rect2(695, 340, 220, 78).has_point(pos):
 				game_state = "upgrades"
+		"maps":
+			if Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
+			else:
+				for i in range(profile.MAPS.size()):
+					if Rect2(170.0 + float(i) * 215.0, 215, 190, 190).has_point(pos):
+						profile.selected_map = i
+						profile.save_profile()
+						break
 		"garage":
 			if Rect2(35, 445, 170, 62).has_point(pos):
 				game_state = "home"
@@ -233,11 +256,13 @@ func _draw() -> void:
 	match game_state:
 		"home": _draw_home()
 		"garage": _draw_garage()
+		"maps": _draw_maps()
 		"upgrades": _draw_upgrades()
 		"results": _draw_results()
 
 func _draw_backdrop() -> void:
-	draw_rect(Rect2(0, 0, W, H), Color("#9bcbd3"))
+	var palette: Dictionary = profile.MAPS[profile.selected_map]
+	draw_rect(Rect2(0, 0, W, H), Color(str(palette.sky)))
 	for i in range(7):
 		var sx := fposmod(float(i) * 205.0 - camera_x * 0.12, W + 220.0) - 100.0
 		draw_circle(Vector2(sx, 92.0 + float(i % 3) * 25.0), 28.0, Color(1, 1, 1, 0.45))
@@ -245,32 +270,41 @@ func _draw_backdrop() -> void:
 	for i in range(5):
 		var mx := fposmod(float(i) * 330.0 - camera_x * 0.23, W + 350.0) - 170.0
 		var peak := 285.0 + float(i % 2) * 40.0
-		draw_colored_polygon(PackedVector2Array([Vector2(mx - 190, H), Vector2(mx, peak), Vector2(mx + 190, H)]), Color("#719a91"))
-		draw_colored_polygon(PackedVector2Array([Vector2(mx - 75, peak + 82), Vector2(mx, peak), Vector2(mx + 75, peak + 82)]), Color("#c6d7c7", 0.7))
+		var mountain_color := Color("#719a91") if profile.selected_map == 0 else (Color("#b9875c") if profile.selected_map == 1 else Color("#718ba8"))
+		draw_colored_polygon(PackedVector2Array([Vector2(mx - 190, H), Vector2(mx, peak), Vector2(mx + 190, H)]), mountain_color)
+		draw_colored_polygon(PackedVector2Array([Vector2(mx - 75, peak + 82), Vector2(mx, peak), Vector2(mx + 75, peak + 82)]), Color("#e4eceb", 0.65) if profile.selected_map == 2 else Color("#c6d7c7", 0.7))
 
 func _draw_landscape() -> void:
 	var terrain := PackedVector2Array([Vector2(0, H)])
 	for sx in range(0, 981, 6):
 		terrain.append(Vector2(float(sx), ground_height(camera_x + float(sx))))
 	terrain.append(Vector2(W, H))
-	draw_colored_polygon(terrain, Color("#74513a"))
+	var palette: Dictionary = profile.MAPS[profile.selected_map]
+	draw_colored_polygon(terrain, Color(str(palette.earth)))
 	for sx in range(0, 981, 6):
 		var x1 := float(sx)
 		var x2 := x1 + 6.0
 		var y1 := ground_height(camera_x + x1)
 		var y2 := ground_height(camera_x + x2)
-		draw_line(Vector2(x1, y1), Vector2(x2, y2), Color("#4d9a55"), 12.0, true)
-		draw_line(Vector2(x1, y1 + 7), Vector2(x2, y2 + 7), Color("#a7c96c"), 2.0, true)
+		var surface := Color(str(palette.surface))
+		draw_line(Vector2(x1, y1), Vector2(x2, y2), surface, 12.0, true)
+		draw_line(Vector2(x1, y1 + 7), Vector2(x2, y2 + 7), surface.lightened(0.28), 2.0, true)
 	for i in range(14):
 		var wx := float(i) * 390.0 + 180.0
 		var sx := wx - camera_x
 		if sx > -40.0 and sx < W + 40.0:
 			var gy := ground_height(wx)
-			draw_line(Vector2(sx, gy - 4), Vector2(sx - 4, gy - 38), Color("#554b35"), 5.0)
-			draw_circle(Vector2(sx - 4, gy - 45), 18.0, Color("#497e55"))
-
-func _draw_track() -> void:
-	pass
+			if profile.selected_map == 0:
+				draw_line(Vector2(sx, gy - 4), Vector2(sx - 4, gy - 38), Color("#554b35"), 5.0)
+				draw_circle(Vector2(sx - 4, gy - 45), 18.0, Color("#497e55"))
+			elif profile.selected_map == 1:
+				draw_line(Vector2(sx, gy - 3), Vector2(sx, gy - 28), Color("#55734c"), 5.0)
+				draw_line(Vector2(sx, gy - 18), Vector2(sx - 13, gy - 24), Color("#55734c"), 4.0)
+				draw_line(Vector2(sx, gy - 18), Vector2(sx + 13, gy - 24), Color("#55734c"), 4.0)
+			else:
+				var snow_peak := PackedVector2Array([Vector2(sx - 24, gy - 12), Vector2(sx, gy - 60), Vector2(sx + 24, gy - 12)])
+				draw_colored_polygon(snow_peak, Color("#526e85"))
+				draw_colored_polygon(PackedVector2Array([Vector2(sx - 10, gy - 40), Vector2(sx, gy - 60), Vector2(sx + 10, gy - 40)]), Color("#edf4f5"))
 
 func _draw_collectibles() -> void:
 	var start := int(floor(camera_x / COIN_SPACING)) - 1
@@ -301,19 +335,32 @@ func _draw_vehicle() -> void:
 	var pos := Vector2(car.x - camera_x, car.y)
 	draw_set_transform(pos, car.angle, Vector2.ONE)
 	var wheelbase := 57.0
+	var wheel_radius := 29.0 if profile.selected_vehicle == 3 else 23.0
 	for side in [-1.0, 1.0]:
 		var wx := side * wheelbase
 		var compression := car.front_compression if side > 0.0 else car.rear_compression
-		draw_line(Vector2(wx, 24), Vector2(wx, 39 + compression * 8.0), Color("#333b42"), 7.0)
-		draw_circle(Vector2(wx, 45 + compression * 8.0), 23.0, Color("#202a30"))
-		draw_circle(Vector2(wx, 45 + compression * 8.0), 13.0, Color("#aab8ba"))
-		draw_circle(Vector2(wx, 45 + compression * 8.0), 5.0, Color("#4e5b60"))
-		for spoke in range(4):
-			var a := float(spoke) * PI * 0.5
-			draw_line(Vector2(wx, 45 + compression * 8.0), Vector2(wx + cos(a) * 10.0, 45 + compression * 8.0 + sin(a) * 10.0), Color("#526168"), 2.0)
+		var wy := 45.0 + compression * 8.0
+		draw_line(Vector2(wx, 24), Vector2(wx, wy - wheel_radius + 3.0), Color("#333b42"), 7.0)
+		draw_circle(Vector2(wx, wy), wheel_radius, Color("#202a30"))
+		draw_circle(Vector2(wx, wy), wheel_radius * 0.55, Color("#aab8ba"))
+		draw_circle(Vector2(wx, wy), 5.0, Color("#4e5b60"))
+		for spoke in range(6):
+			var a := float(spoke) * PI / 3.0
+			draw_line(Vector2(wx, wy), Vector2(wx + cos(a) * wheel_radius * 0.46, wy + sin(a) * wheel_radius * 0.46), Color("#526168"), 2.0)
 	var body_color := Color(str(spec.color))
-	draw_colored_polygon(PackedVector2Array([Vector2(-70, -18), Vector2(-52, -48), Vector2(25, -48), Vector2(60, -17), Vector2(70, 16), Vector2(-69, 16)]), body_color)
-	draw_colored_polygon(PackedVector2Array([Vector2(-27, -43), Vector2(18, -43), Vector2(42, -20), Vector2(-39, -20)]), Color("#b9dce2"))
+	match profile.selected_vehicle:
+		1:
+			draw_colored_polygon(PackedVector2Array([Vector2(-75, -17), Vector2(-62, -55), Vector2(35, -55), Vector2(68, -24), Vector2(76, 18), Vector2(-75, 18)]), body_color)
+		2:
+			draw_colored_polygon(PackedVector2Array([Vector2(-76, -12), Vector2(-50, -37), Vector2(34, -37), Vector2(69, -12), Vector2(76, 12), Vector2(-76, 12)]), body_color)
+			draw_line(Vector2(-38, -35), Vector2(-15, -65), Color("#303c42"), 5.0)
+			draw_line(Vector2(-15, -65), Vector2(34, -35), Color("#303c42"), 5.0)
+		3:
+			draw_colored_polygon(PackedVector2Array([Vector2(-72, -25), Vector2(-57, -65), Vector2(35, -65), Vector2(68, -28), Vector2(75, 18), Vector2(-75, 18)]), body_color)
+		_:
+			draw_colored_polygon(PackedVector2Array([Vector2(-70, -18), Vector2(-52, -48), Vector2(25, -48), Vector2(60, -17), Vector2(70, 16), Vector2(-69, 16)]), body_color)
+	var glass_y := -58.0 if profile.selected_vehicle == 3 else (-48.0 if profile.selected_vehicle != 2 else -37.0)
+	draw_colored_polygon(PackedVector2Array([Vector2(-27, glass_y + 5), Vector2(18, glass_y + 5), Vector2(42, -20), Vector2(-39, -20)]), Color("#b9dce2"))
 	draw_line(Vector2(-68, 12), Vector2(67, 12), Color("#343c42"), 5.0)
 	draw_rect(Rect2(-12, -14, 27, 20), Color("#28353a"))
 	draw_circle(Vector2(54, -3), 6.0, Color("#fff0a5"))
@@ -341,13 +388,32 @@ func _draw_home() -> void:
 	_text("RIDGELINE", Vector2(480, 128), 56, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 169), 20, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("A new climb begins here", Vector2(480, 213), 18, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(85, 340, 220, 78), Color("#386d79"))
-	_text("GARAGE", Vector2(195, 387), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(350, 340, 260, 78), Color("#d47a36"))
-	_text("START DRIVE", Vector2(480, 387), 25, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_panel(Rect2(655, 340, 220, 78), Color("#536a7b"))
-	_text("UPGRADES", Vector2(765, 387), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_text("BANK  %d     BEST  %dm" % [profile.bank, best_distance], Vector2(480, 455), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(45, 340, 180, 78), Color("#386d79"))
+	_text("GARAGE", Vector2(135, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(245, 340, 180, 78), Color("#4d7e77"))
+	_text("MAPS", Vector2(335, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(445, 340, 230, 78), Color("#d47a36"))
+	_text("START DRIVE", Vector2(560, 387), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(695, 340, 220, 78), Color("#536a7b"))
+	_text("UPGRADES", Vector2(805, 387), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("%s     BANK %d     BEST %dm" % [profile.MAPS[profile.selected_map].name, profile.bank, best_distance], Vector2(480, 455), 16, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+
+func _draw_maps() -> void:
+	_overlay()
+	_panel(Rect2(105, 35, 750, 465), Color("#17262e"))
+	_text("CHOOSE YOUR TERRAIN", Vector2(480, 100), 38, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	for i in range(profile.MAPS.size()):
+		var map_data: Dictionary = profile.MAPS[i]
+		var x := 170.0 + float(i) * 215.0
+		var sky := Color(str(map_data.sky))
+		_panel(Rect2(x, 215, 190, 190), Color("#2b414a"))
+		draw_rect(Rect2(x + 12, 227, 166, 86), sky)
+		var earth := Color(str(map_data.earth))
+		draw_colored_polygon(PackedVector2Array([Vector2(x + 12, 300), Vector2(x + 48, 270), Vector2(x + 84, 291), Vector2(x + 125, 260), Vector2(x + 178, 295), Vector2(x + 178, 313), Vector2(x + 12, 313)]), earth)
+		_text(str(map_data.name), Vector2(x + 95, 345), 15, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		_text("SELECTED" if profile.selected_map == i else "TAP TO SELECT", Vector2(x + 95, 380), 13, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text(str(map_data.subtitle), Vector2(480, 435), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_back_button()
 
 func _draw_garage() -> void:
 	_overlay()
