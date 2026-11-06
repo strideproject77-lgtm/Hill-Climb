@@ -1,6 +1,11 @@
 name: Hill Climb Android APK
 
 on:
+  push:
+    branches: [hill-climb-game]
+    paths:
+      - 'game/**'
+      - '.github/workflows/hill-climb-android.yml'
   workflow_dispatch:
 
 permissions:
