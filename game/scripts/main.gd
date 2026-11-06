@@ -48,6 +48,10 @@ func ground_height(world_x: float) -> float:
 			var ice_roll := sin(world_x * 0.0048 + 1.5) * 54.0
 			var ice_cliff := pow(maxf(0.0, sin(world_x * 0.0008 + 0.8)), 4.0) * 52.0
 			return 402.0 - ice_hill - ice_roll - ice_cliff
+		3:
+			return 405.0 - sin(world_x * 0.0017) * 92.0 - sin(world_x * 0.0052) * 58.0 - pow(maxf(0.0, sin(world_x * 0.0009)), 3.0) * 66.0
+		4:
+			return 420.0 - sin(world_x * 0.0013) * 112.0 - sin(world_x * 0.0038 + 0.5) * 70.0
 		_:
 			var long_hill := sin(world_x * 0.0019 + 0.5) * 66.0
 			var rolling := sin(world_x * 0.0041) * 58.0
@@ -82,7 +86,7 @@ func _update_run(dt: float) -> void:
 		spec["grip"] = float(spec.grip) * 0.92
 	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
 	if gas_pressed and fuel > 0.0:
-		fuel = maxf(0.0, fuel - (0.72 + float(spec.power) * 0.22) * dt)
+		fuel = maxf(0.0, fuel - (0.58 + float(spec.power) * 0.17 + car.engine_heat * 0.0018) * dt)
 	run_distance = maxf(run_distance, (car.x - 180.0) / 10.0)
 	camera_x = maxf(0.0, car.x - 330.0)
 	_collect_items()
@@ -92,7 +96,7 @@ func _update_run(dt: float) -> void:
 		crash_flash += dt
 	else:
 		crash_flash = 0.0
-	if crash_flash > 0.65 or car.y > H + 360.0 or fuel <= 0.0:
+	if crash_flash > 0.65 or car.y > H + 360.0 or fuel <= 0.0 or car.damage >= VehiclePhysics.MAX_DAMAGE:
 		_finish_run()
 
 func _collect_items() -> void:
@@ -304,10 +308,16 @@ func _draw_landscape() -> void:
 				draw_line(Vector2(sx, gy - 3), Vector2(sx, gy - 28), Color("#55734c"), 5.0)
 				draw_line(Vector2(sx, gy - 18), Vector2(sx - 13, gy - 24), Color("#55734c"), 4.0)
 				draw_line(Vector2(sx, gy - 18), Vector2(sx + 13, gy - 24), Color("#55734c"), 4.0)
-			else:
+			elif profile.selected_map == 2:
 				var snow_peak := PackedVector2Array([Vector2(sx - 24, gy - 12), Vector2(sx, gy - 60), Vector2(sx + 24, gy - 12)])
 				draw_colored_polygon(snow_peak, Color("#526e85"))
 				draw_colored_polygon(PackedVector2Array([Vector2(sx - 10, gy - 40), Vector2(sx, gy - 60), Vector2(sx + 10, gy - 40)]), Color("#edf4f5"))
+			elif profile.selected_map == 3:
+				draw_circle(Vector2(sx, gy - 18), 13.0, Color("#b75d43"))
+				draw_circle(Vector2(sx - 5, gy - 23), 5.0, Color("#e8a05a"))
+			else:
+				draw_circle(Vector2(sx, gy - 15), 16.0, Color("#88899e"))
+				draw_circle(Vector2(sx + 10, gy - 28), 6.0, Color("#c8cad5"))
 
 func _draw_collectibles() -> void:
 	var start := int(floor(camera_x / COIN_SPACING)) - 1
@@ -338,7 +348,7 @@ func _draw_vehicle() -> void:
 	var pos := Vector2(car.x - camera_x, car.y)
 	draw_set_transform(pos, car.angle, Vector2.ONE)
 	var wheelbase := 57.0
-	var wheel_radius := 29.0 if profile.selected_vehicle == 3 else 23.0
+	var wheel_radius := 29.0 if profile.selected_vehicle in [3, 5, 6] else (18.0 if profile.selected_vehicle == 4 else 23.0)
 	for side in [-1.0, 1.0]:
 		var wx := side * wheelbase
 		var compression := car.front_compression if side > 0.0 else car.rear_compression
@@ -360,9 +370,17 @@ func _draw_vehicle() -> void:
 			draw_line(Vector2(-15, -65), Vector2(34, -35), Color("#303c42"), 5.0)
 		3:
 			draw_colored_polygon(PackedVector2Array([Vector2(-72, -25), Vector2(-57, -65), Vector2(35, -65), Vector2(68, -28), Vector2(75, 18), Vector2(-75, 18)]), body_color)
+		4:
+			draw_line(Vector2(-12, -30), Vector2(15, -64), Color("#303c42"), 5.0)
+			draw_line(Vector2(15, -64), Vector2(44, -26), Color("#303c42"), 5.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(-36, -26), Vector2(-14, -43), Vector2(22, -39), Vector2(48, -18), Vector2(-30, -12)]), body_color)
+		5:
+			draw_colored_polygon(PackedVector2Array([Vector2(-78, -20), Vector2(-65, -52), Vector2(45, -52), Vector2(78, -18), Vector2(78, 18), Vector2(-78, 18)]), body_color)
+		6:
+			draw_colored_polygon(PackedVector2Array([Vector2(-82, -22), Vector2(-62, -58), Vector2(42, -58), Vector2(78, -25), Vector2(82, 18), Vector2(-82, 18)]), body_color)
 		_:
 			draw_colored_polygon(PackedVector2Array([Vector2(-70, -18), Vector2(-52, -48), Vector2(25, -48), Vector2(60, -17), Vector2(70, 16), Vector2(-69, 16)]), body_color)
-	var glass_y := -58.0 if profile.selected_vehicle == 3 else (-48.0 if profile.selected_vehicle != 2 else -37.0)
+	var glass_y := -58.0 if profile.selected_vehicle == 3 else (-43.0 if profile.selected_vehicle in [5, 6] else (-48.0 if profile.selected_vehicle != 2 else -37.0))
 	draw_colored_polygon(PackedVector2Array([Vector2(-27, glass_y + 5), Vector2(18, glass_y + 5), Vector2(42, -20), Vector2(-39, -20)]), Color("#b9dce2"))
 	draw_line(Vector2(-68, 12), Vector2(67, 12), Color("#343c42"), 5.0)
 	draw_rect(Rect2(-12, -14, 27, 20), Color("#28353a"))
@@ -378,6 +396,9 @@ func _draw_hud() -> void:
 	_text(str(run_coins), Vector2(258, 81), 29, Color.WHITE)
 	_panel(Rect2(705, 18, 235, 78), Color("#172b32"))
 	_text("FUEL", Vector2(723, 44), 13, Color.WHITE)
+	_text("ENGINE", Vector2(723, 91), 10, Color("#c7d7d7"))
+	draw_rect(Rect2(780, 82, 138, 8), Color("#3b4b4f"))
+	draw_rect(Rect2(780, 82, 138.0 * car.engine_heat / 120.0, 8), Color("#e36b4d") if car.engine_heat > 75.0 else Color("#e7b24a"))
 	draw_rect(Rect2(723, 56, 195, 17), Color("#3b4b4f"))
 	draw_rect(Rect2(723, 56, 195.0 * fuel / fuel_capacity, 17), Color("#77cb68") if fuel > fuel_capacity * 0.25 else Color("#e36b4d"))
 	_control(Rect2(20, 420, 190, 96), "BRAKE", Color("#477e9a"))
@@ -475,6 +496,7 @@ func _draw_results() -> void:
 	_text("DISTANCE", Vector2(480, 235), 15, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Coins collected  %d" % run_coins, Vector2(480, 285), 20, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("Career bank  %d" % profile.bank, Vector2(480, 320), 18, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Vehicle condition  %d%%" % int(100.0 - car.damage), Vector2(480, 348), 15, Color("#e6a58a"), HORIZONTAL_ALIGNMENT_CENTER)
 	_panel(Rect2(350, 370, 260, 72), Color("#d47a36"))
 	_text("DRIVE AGAIN", Vector2(480, 415), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_back_button()
