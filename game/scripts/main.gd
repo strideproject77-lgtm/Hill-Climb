@@ -2,307 +2,429 @@ extends Node2D
 
 const W := 960.0
 const H := 540.0
-const GRAVITY := 1150.0
-const MAX_SPEED := 620.0
-const WHEEL_BASE := 112.0
-const COIN_SPACING := 245.0
+const COIN_SPACING := 205.0
+const FUEL_SPACING := 1320.0
+const PhysicsScript = preload("res://scripts/vehicle_physics.gd")
+const ProfileScript = preload("res://scripts/game_profile.gd")
 
-var car_x := 180.0
-var car_y := 260.0
-var car_vx := 0.0
-var car_vy := 0.0
-var car_angle := 0.0
-var angular_velocity := 0.0
-var camera_x := 0.0
-var distance := 0.0
-var coins := 0
-var fuel := 100.0
-var game_state := "menu"
-var throttle := false
-var brake := false
-var rotate_left := false
-var rotate_right := false
-var touch_points: Dictionary = {}
-var collected: Dictionary = {}
-var best_distance := 0.0
-var last_grounded := true
-var crash_timer := 0.0
-
+var car
+var profile
 var font: Font
+var game_state := "home"
+var camera_x := 0.0
+var run_distance := 0.0
+var run_coins := 0
+var fuel := 100.0
+var fuel_capacity := 100.0
+var fuel_pickups: Dictionary = {}
+var coin_pickups: Dictionary = {}
+var touch_points: Dictionary = {}
+var gas_pressed := false
+var brake_pressed := false
+var lean_left := false
+var lean_right := false
+var crash_flash := 0.0
+var last_crash_speed := 0.0
+var best_distance := 0
 
 func _ready() -> void:
 	font = ThemeDB.fallback_font
+	car = PhysicsScript.new()
+	profile = ProfileScript.new()
+	profile.load_profile()
+	best_distance = profile.best_distance
 	_reset_run()
 	set_process(true)
 
+func ground_height(world_x: float) -> float:
+	var long_hill := sin(world_x * 0.0019 + 0.5) * 66.0
+	var rolling := sin(world_x * 0.0041) * 58.0
+	var sharp := sin(world_x * 0.0105 + 1.3) * 19.0
+	var ridge := pow(maxf(0.0, sin(world_x * 0.00072 + 0.4)), 3.0) * 48.0
+	return 405.0 - long_hill - rolling - sharp - ridge
+
 func _reset_run() -> void:
-	car_x = 180.0
-	car_y = ground_height(car_x) - 74.0
-	car_vx = 0.0
-	car_vy = 0.0
-	car_angle = 0.0
-	angular_velocity = 0.0
+	car.reset(180.0, Callable(self, "ground_height"))
 	camera_x = 0.0
-	distance = 0.0
-	coins = 0
-	fuel = 100.0
-	collected.clear()
-	last_grounded = true
-	crash_timer = 0.0
+	run_distance = 0.0
+	run_coins = 0
+	fuel_capacity = float(profile.vehicle_spec().fuel_capacity)
+	fuel = fuel_capacity
+	coin_pickups.clear()
+	fuel_pickups.clear()
+	crash_flash = 0.0
+	_clear_controls()
 
 func _process(delta: float) -> void:
 	var dt := minf(delta, 0.033)
 	if game_state == "playing":
-		_update_physics(dt)
+		_update_run(dt)
 	queue_redraw()
 
-func _update_physics(dt: float) -> void:
-	var grounded := _is_grounded()
-	var drive := (1.0 if throttle else 0.0) - (0.72 if brake else 0.0)
-	if fuel > 0.0:
-		car_vx += drive * (820.0 if drive >= 0.0 else 680.0) * dt
-		if throttle:
-			fuel = maxf(0.0, fuel - 1.05 * dt)
-	car_vx = move_toward(car_vx, 0.0, (95.0 if not throttle and not brake else 20.0) * dt)
-	car_vx = clampf(car_vx, -110.0, MAX_SPEED)
-	car_x += car_vx * dt
-	car_vy += GRAVITY * dt
-	car_y += car_vy * dt
-
-	var left_ground := ground_height(car_x - WHEEL_BASE * 0.5)
-	var right_ground := ground_height(car_x + WHEEL_BASE * 0.5)
-	var target_y := minf(left_ground, right_ground) - 72.0
-	var target_angle := atan2(right_ground - left_ground, WHEEL_BASE)
-	if car_y >= target_y and car_vy > 0.0:
-		car_y = target_y
-		car_vy = 0.0
-		angular_velocity = lerpf(angular_velocity, 0.0, 0.35)
-		car_angle = lerp_angle(car_angle, target_angle, minf(1.0, dt * 11.0))
-		grounded = true
+func _update_run(dt: float) -> void:
+	var lean := (1.0 if lean_right else 0.0) - (1.0 if lean_left else 0.0)
+	var spec: Dictionary = profile.vehicle_spec()
+	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
+	if gas_pressed and fuel > 0.0:
+		fuel = maxf(0.0, fuel - (0.72 + float(spec.power) * 0.22) * dt)
+	run_distance = maxf(run_distance, (car.x - 180.0) / 10.0)
+	camera_x = maxf(0.0, car.x - 330.0)
+	_collect_items()
+	crash_flash = maxf(0.0, crash_flash - dt)
+	var upside_down := absf(wrapf(car.angle, -PI, PI)) > 2.15 and car.grounded
+	if upside_down:
+		crash_flash += dt
 	else:
-		grounded = false
-		if rotate_left:
-			angular_velocity -= 2.4 * dt
-		if rotate_right:
-			angular_velocity += 2.4 * dt
-		angular_velocity = clampf(angular_velocity, -2.8, 2.8)
-		car_angle += angular_velocity * dt
-		car_angle = wrapf(car_angle, -PI, PI)
+		crash_flash = 0.0
+	if crash_flash > 0.65 or car.y > H + 360.0 or fuel <= 0.0:
+		_finish_run()
 
-	if grounded and not last_grounded and absf(car_angle) > 1.0 and car_vx > 200.0:
-		crash_timer = 0.65
-	last_grounded = grounded
-	if crash_timer > 0.0:
-		crash_timer -= dt
-		if crash_timer <= 0.0:
-			_end_run()
-	if car_y > H + 500.0 or fuel <= 0.0:
-		_end_run()
-
-	distance = maxf(distance, (car_x - 180.0) / 10.0)
-	best_distance = maxf(best_distance, distance)
-	camera_x = maxf(0.0, car_x - 330.0)
-	_check_pickups()
-
-func _end_run() -> void:
-	game_state = "over"
-	throttle = false
-	brake = false
-	rotate_left = false
-	rotate_right = false
-
-func _is_grounded() -> bool:
-	var g := minf(ground_height(car_x - WHEEL_BASE * 0.5), ground_height(car_x + WHEEL_BASE * 0.5))
-	return car_y >= g - 73.0 and car_vy >= 0.0
-
-func ground_height(world_x: float) -> float:
-	var hills := sin(world_x * 0.0042) * 78.0 + sin(world_x * 0.0091 + 1.4) * 29.0 + sin(world_x * 0.0017) * 65.0
-	var ramps := sin(world_x * 0.0011 + 0.6) * 24.0
-	return 390.0 - hills - ramps
-
-func _check_pickups() -> void:
-	var index := int(floor((car_x - 160.0) / COIN_SPACING))
-	for i in range(index - 1, index + 3):
-		if i < 0 or collected.has(i):
+func _collect_items() -> void:
+	var coin_index := int(floor(car.x / COIN_SPACING))
+	for i in range(maxi(0, coin_index - 2), coin_index + 4):
+		if coin_pickups.has(i):
 			continue
-		var px := 260.0 + float(i) * COIN_SPACING
-		var py := ground_height(px) - 118.0
-		if Vector2(car_x, car_y).distance_to(Vector2(px, py)) < 78.0:
-			collected[i] = true
-			coins += 1
-			if coins % 6 == 0:
-				fuel = minf(100.0, fuel + 14.0)
+		var px := 300.0 + float(i) * COIN_SPACING
+		var py := ground_height(px) - 112.0 - sin(float(i) * 1.7) * 18.0
+		if Vector2(car.x, car.y).distance_to(Vector2(px, py)) < 67.0:
+			coin_pickups[i] = true
+			run_coins += 1
+	var fuel_index := int(floor(car.x / FUEL_SPACING))
+	for j in range(maxi(0, fuel_index - 1), fuel_index + 2):
+		if fuel_pickups.has(j):
+			continue
+		var fx := 760.0 + float(j) * FUEL_SPACING
+		var fy := ground_height(fx) - 82.0
+		if Vector2(car.x, car.y).distance_to(Vector2(fx, fy)) < 75.0:
+			fuel_pickups[j] = true
+			fuel = minf(fuel_capacity, fuel + fuel_capacity * 0.34)
+
+func _finish_run() -> void:
+	game_state = "results"
+	_clear_controls()
+	var reward := run_coins + int(run_distance / 80.0)
+	profile.bank += reward
+	profile.best_distance = maxi(profile.best_distance, int(run_distance))
+	best_distance = profile.best_distance
+	profile.save_profile()
+
+func _clear_controls() -> void:
+	touch_points.clear()
+	gas_pressed = false
+	brake_pressed = false
+	lean_left = false
+	lean_right = false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
-		var e := event as InputEventScreenTouch
-		if e.pressed:
-			_handle_press(e.index, e.position)
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			_press(touch.index, touch.position)
 		else:
-			_release_touch(e.index)
+			_release(touch.index)
 	elif event is InputEventScreenDrag:
-		var e := event as InputEventScreenDrag
-		_update_touch(e.index, e.position)
+		var drag := event as InputEventScreenDrag
+		if touch_points.has(drag.index):
+			touch_points[drag.index] = drag.position
+			_update_controls()
 	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
-			_handle_press(-1, event.position)
+			_press(-1, event.position)
 		else:
-			_release_touch(-1)
+			_release(-1)
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_update_touch(-1, event.position)
+		if touch_points.has(-1):
+			touch_points[-1] = event.position
+			_update_controls()
 	elif event is InputEventKey:
 		_update_controls()
 
-func _handle_press(id: int, pos: Vector2) -> void:
+func _press(id: int, pos: Vector2) -> void:
 	if game_state != "playing":
-		if Rect2(340, 330, 280, 92).has_point(pos):
-			_reset_run()
-			game_state = "playing"
-			return
+		_handle_menu_press(pos)
 		return
 	touch_points[id] = pos
 	_update_controls()
 
-func _update_touch(id: int, pos: Vector2) -> void:
-	if touch_points.has(id):
-		touch_points[id] = pos
-		_update_controls()
-
-func _release_touch(id: int) -> void:
+func _release(id: int) -> void:
 	touch_points.erase(id)
 	_update_controls()
 
 func _update_controls() -> void:
-	throttle = false
-	brake = false
-	rotate_left = false
-	rotate_right = false
-	for p in touch_points.values():
-		if p.x > 710.0 and p.y > 360.0:
-			throttle = true
-		elif p.x < 250.0 and p.y > 360.0:
-			brake = true
-		elif p.x > 430.0 and p.x < 690.0 and p.y > 360.0:
-			rotate_right = true
-		elif p.x > 250.0 and p.x < 430.0 and p.y > 360.0:
-			rotate_left = true
-	throttle = throttle or Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)
-	brake = brake or Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A)
-	rotate_left = rotate_left or Input.is_key_pressed(KEY_UP)
-	rotate_right = rotate_right or Input.is_key_pressed(KEY_DOWN)
+	gas_pressed = Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)
+	brake_pressed = Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A)
+	lean_left = Input.is_key_pressed(KEY_UP)
+	lean_right = Input.is_key_pressed(KEY_DOWN)
+	for point in touch_points.values():
+		if point.y >= 365.0:
+			if point.x < 235.0:
+				brake_pressed = true
+			elif point.x < 465.0:
+				lean_left = true
+			elif point.x < 700.0:
+				lean_right = true
+			else:
+				gas_pressed = true
+
+func _handle_menu_press(pos: Vector2) -> void:
+	match game_state:
+		"home":
+			if Rect2(350, 340, 260, 78).has_point(pos):
+				_reset_run()
+				game_state = "playing"
+			elif Rect2(85, 340, 220, 78).has_point(pos):
+				game_state = "garage"
+			elif Rect2(655, 340, 220, 78).has_point(pos):
+				game_state = "upgrades"
+		"garage":
+			if Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
+			elif Rect2(235, 280, 100, 80).has_point(pos):
+				profile.selected_vehicle = posmod(profile.selected_vehicle - 1, profile.VEHICLES.size())
+				profile.save_profile()
+			elif Rect2(625, 280, 100, 80).has_point(pos):
+				profile.selected_vehicle = posmod(profile.selected_vehicle + 1, profile.VEHICLES.size())
+				profile.save_profile()
+			elif Rect2(350, 390, 260, 72).has_point(pos):
+				_select_or_buy_vehicle()
+		"upgrades":
+			if Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
+			else:
+				for i in range(4):
+					if Rect2(250, 205.0 + float(i) * 58.0, 470, 48).has_point(pos):
+						_buy_upgrade(["engine", "suspension", "tires", "fuel"][i])
+						break
+		"results":
+			if Rect2(350, 370, 260, 72).has_point(pos):
+				_reset_run()
+				game_state = "playing"
+			elif Rect2(35, 445, 170, 62).has_point(pos):
+				game_state = "home"
+
+func _select_or_buy_vehicle() -> void:
+	var vehicle: Dictionary = profile.VEHICLES[profile.selected_vehicle]
+	if profile.unlocked.has(profile.selected_vehicle):
+		_reset_run()
+		game_state = "playing"
+	elif profile.bank >= int(vehicle.price):
+		profile.bank -= int(vehicle.price)
+		profile.unlocked.append(profile.selected_vehicle)
+		profile.save_profile()
+
+func _buy_upgrade(key: String) -> void:
+	var level := int(profile.upgrades[key])
+	if level >= 5:
+		return
+	var cost := 120 + level * 145
+	if profile.bank >= cost:
+		profile.bank -= cost
+		profile.upgrades[key] = level + 1
+		profile.save_profile()
 
 func _draw() -> void:
-	_draw_background()
-	_draw_terrain()
-	_draw_pickups()
-	_draw_car()
-	_draw_hud()
-	if game_state == "menu":
-		_draw_menu()
-	elif game_state == "over":
-		_draw_game_over()
+	_draw_backdrop()
+	_draw_landscape()
+	if game_state == "playing" or game_state == "results":
+		_draw_track()
+		_draw_collectibles()
+		_draw_vehicle()
+		_draw_hud()
+	match game_state:
+		"home": _draw_home()
+		"garage": _draw_garage()
+		"upgrades": _draw_upgrades()
+		"results": _draw_results()
 
-func _draw_background() -> void:
-	draw_rect(Rect2(0, 0, W, H), Color("#8ed6e8"))
+func _draw_backdrop() -> void:
+	draw_rect(Rect2(0, 0, W, H), Color("#9bcbd3"))
+	for i in range(7):
+		var sx := fposmod(float(i) * 205.0 - camera_x * 0.12, W + 220.0) - 100.0
+		draw_circle(Vector2(sx, 92.0 + float(i % 3) * 25.0), 28.0, Color(1, 1, 1, 0.45))
+		draw_circle(Vector2(sx + 24.0, 99.0 + float(i % 3) * 25.0), 21.0, Color(1, 1, 1, 0.45))
 	for i in range(5):
-		var x := fposmod(float(i) * 270.0 - camera_x * 0.18, W + 260.0) - 130.0
-		var y := 110.0 + float(i % 2) * 48.0
-		draw_circle(Vector2(x, y), 31.0, Color(1, 1, 1, 0.72))
-		draw_circle(Vector2(x + 28, y + 8), 24.0, Color(1, 1, 1, 0.72))
-		draw_circle(Vector2(x - 25, y + 12), 20.0, Color(1, 1, 1, 0.72))
-	for i in range(4):
-		var mx := fposmod(float(i) * 360.0 - camera_x * 0.34, W + 360.0) - 180.0
-		var peak := 300.0 + float(i % 2) * 40.0
-		var points := PackedVector2Array([Vector2(mx - 190, H), Vector2(mx, peak), Vector2(mx + 190, H)])
-		draw_colored_polygon(points, Color("#74b7a0"))
+		var mx := fposmod(float(i) * 330.0 - camera_x * 0.23, W + 350.0) - 170.0
+		var peak := 285.0 + float(i % 2) * 40.0
+		draw_colored_polygon(PackedVector2Array([Vector2(mx - 190, H), Vector2(mx, peak), Vector2(mx + 190, H)]), Color("#719a91"))
+		draw_colored_polygon(PackedVector2Array([Vector2(mx - 75, peak + 82), Vector2(mx, peak), Vector2(mx + 75, peak + 82)]), Color("#c6d7c7", 0.7))
 
-func _draw_terrain() -> void:
-	var points := PackedVector2Array()
-	points.append(Vector2(0, H))
-	for sx in range(0, 981, 8):
-		points.append(Vector2(float(sx), ground_height(camera_x + float(sx))))
-	points.append(Vector2(W, H))
-	draw_colored_polygon(points, Color("#79553b"))
-	var ridge := PackedVector2Array()
-	for sx in range(0, 981, 8):
-		ridge.append(Vector2(float(sx), ground_height(camera_x + float(sx))))
-	for i in range(ridge.size() - 1):
-		draw_line(ridge[i], ridge[i + 1], Color("#5bb85c"), 13.0, true)
-		draw_line(ridge[i] + Vector2(0, 8), ridge[i + 1] + Vector2(0, 8), Color("#a1d66c"), 3.0, true)
+func _draw_landscape() -> void:
+	var terrain := PackedVector2Array([Vector2(0, H)])
+	for sx in range(0, 981, 6):
+		terrain.append(Vector2(float(sx), ground_height(camera_x + float(sx))))
+	terrain.append(Vector2(W, H))
+	draw_colored_polygon(terrain, Color("#74513a"))
+	for sx in range(0, 981, 6):
+		var x1 := float(sx)
+		var x2 := x1 + 6.0
+		var y1 := ground_height(camera_x + x1)
+		var y2 := ground_height(camera_x + x2)
+		draw_line(Vector2(x1, y1), Vector2(x2, y2), Color("#4d9a55"), 12.0, true)
+		draw_line(Vector2(x1, y1 + 7), Vector2(x2, y2 + 7), Color("#a7c96c"), 2.0, true)
+	for i in range(14):
+		var wx := float(i) * 390.0 + 180.0
+		var sx := wx - camera_x
+		if sx > -40.0 and sx < W + 40.0:
+			var gy := ground_height(wx)
+			draw_line(Vector2(sx, gy - 4), Vector2(sx - 4, gy - 38), Color("#554b35"), 5.0)
+			draw_circle(Vector2(sx - 4, gy - 45), 18.0, Color("#497e55"))
 
-func _draw_pickups() -> void:
-	var first := int(floor((camera_x - 260.0) / COIN_SPACING))
-	for i in range(maxi(0, first), first + 7):
-		if collected.has(i):
+func _draw_track() -> void:
+	pass
+
+func _draw_collectibles() -> void:
+	var start := int(floor(camera_x / COIN_SPACING)) - 1
+	for i in range(maxi(0, start), start + 8):
+		if coin_pickups.has(i):
 			continue
-		var wx := 260.0 + float(i) * COIN_SPACING
+		var wx := 300.0 + float(i) * COIN_SPACING
 		var sx := wx - camera_x
 		if sx < -30.0 or sx > W + 30.0:
 			continue
-		var sy := ground_height(wx) - 118.0
-		draw_circle(Vector2(sx, sy), 15.0, Color("#f6b93b"))
-		draw_circle(Vector2(sx, sy), 10.0, Color("#ffe58a"))
-		draw_line(Vector2(sx, sy - 6), Vector2(sx, sy + 6), Color("#c47b20"), 3.0)
+		var sy := ground_height(wx) - 112.0 - sin(float(i) * 1.7) * 18.0
+		draw_circle(Vector2(sx, sy), 15.0, Color("#f4b83f"))
+		draw_circle(Vector2(sx, sy), 9.0, Color("#ffe99a"))
+	var fuel_start := int(floor(camera_x / FUEL_SPACING)) - 1
+	for j in range(maxi(0, fuel_start), fuel_start + 4):
+		if fuel_pickups.has(j):
+			continue
+		var fx := 760.0 + float(j) * FUEL_SPACING
+		var sx2 := fx - camera_x
+		if sx2 > -35.0 and sx2 < W + 35.0:
+			var fy := ground_height(fx) - 82.0
+			draw_rect(Rect2(sx2 - 12, fy - 16, 24, 32), Color("#e5e9e4"))
+			draw_rect(Rect2(sx2 - 7, fy - 10, 14, 18), Color("#dc5147"))
+			draw_rect(Rect2(sx2 - 5, fy - 22, 10, 6), Color("#4a5555"))
 
-func _draw_car() -> void:
-	var screen_pos := Vector2(car_x - camera_x, car_y)
-	draw_set_transform(screen_pos, car_angle, Vector2.ONE)
-	for wx in [-WHEEL_BASE * 0.5, WHEEL_BASE * 0.5]:
-		draw_line(Vector2(wx, 20), Vector2(wx, 42), Color("#3d4650"), 7.0)
-		draw_circle(Vector2(wx, 45), 22.0, Color("#26313a"))
-		draw_circle(Vector2(wx, 45), 11.0, Color("#c4d0d4"))
-		draw_circle(Vector2(wx, 45), 4.0, Color("#687982"))
-	draw_colored_polygon(PackedVector2Array([Vector2(-70, -20), Vector2(-53, -48), Vector2(24, -48), Vector2(57, -18), Vector2(69, 14), Vector2(-70, 14)]), Color("#ef7d35"))
-	draw_colored_polygon(PackedVector2Array([Vector2(-28, -43), Vector2(18, -43), Vector2(43, -20), Vector2(-38, -20)]), Color("#bfe8f2"))
-	draw_line(Vector2(-68, 14), Vector2(68, 14), Color("#9b4829"), 5.0)
-	draw_circle(Vector2(52, -4), 6.0, Color("#fff1a8"))
+func _draw_vehicle() -> void:
+	var spec: Dictionary = profile.vehicle_spec()
+	var pos := Vector2(car.x - camera_x, car.y)
+	draw_set_transform(pos, car.angle, Vector2.ONE)
+	var wheelbase := 57.0
+	for side in [-1.0, 1.0]:
+		var wx := side * wheelbase
+		var compression := car.front_compression if side > 0.0 else car.rear_compression
+		draw_line(Vector2(wx, 24), Vector2(wx, 39 + compression * 8.0), Color("#333b42"), 7.0)
+		draw_circle(Vector2(wx, 45 + compression * 8.0), 23.0, Color("#202a30"))
+		draw_circle(Vector2(wx, 45 + compression * 8.0), 13.0, Color("#aab8ba"))
+		draw_circle(Vector2(wx, 45 + compression * 8.0), 5.0, Color("#4e5b60"))
+		for spoke in range(4):
+			var a := float(spoke) * PI * 0.5
+			draw_line(Vector2(wx, 45 + compression * 8.0), Vector2(wx + cos(a) * 10.0, 45 + compression * 8.0 + sin(a) * 10.0), Color("#526168"), 2.0)
+	var body_color := Color(str(spec.color))
+	draw_colored_polygon(PackedVector2Array([Vector2(-70, -18), Vector2(-52, -48), Vector2(25, -48), Vector2(60, -17), Vector2(70, 16), Vector2(-69, 16)]), body_color)
+	draw_colored_polygon(PackedVector2Array([Vector2(-27, -43), Vector2(18, -43), Vector2(42, -20), Vector2(-39, -20)]), Color("#b9dce2"))
+	draw_line(Vector2(-68, 12), Vector2(67, 12), Color("#343c42"), 5.0)
+	draw_rect(Rect2(-12, -14, 27, 20), Color("#28353a"))
+	draw_circle(Vector2(54, -3), 6.0, Color("#fff0a5"))
 	draw_set_transform(Vector2.ZERO)
 
 func _draw_hud() -> void:
-	_draw_panel(Rect2(22, 18, 230, 82), Color(0.08, 0.15, 0.19, 0.82))
-	_draw_text("DISTANCE", Vector2(42, 46), 15, Color("#b7dce1"))
-	_draw_text("%dm" % int(distance), Vector2(42, 82), 29, Color.WHITE)
-	_draw_panel(Rect2(270, 18, 160, 82), Color(0.08, 0.15, 0.19, 0.82))
-	_draw_text("COINS", Vector2(290, 46), 15, Color("#f8d56b"))
-	_draw_text(str(coins), Vector2(290, 82), 29, Color.WHITE)
-	_draw_panel(Rect2(740, 24, 194, 54), Color(0.08, 0.15, 0.19, 0.82))
-	_draw_text("FUEL", Vector2(756, 46), 13, Color.WHITE)
-	draw_rect(Rect2(810, 37, 108, 17), Color("#35434a"))
-	draw_rect(Rect2(810, 37, 108.0 * fuel / 100.0, 17), Color("#72d36c") if fuel > 25 else Color("#ed754c"))
-	if game_state == "playing":
-		_draw_control(Rect2(24, 420, 190, 92), "BRAKE", Color("#477f9c"))
-		_draw_control(Rect2(250, 420, 180, 92), "LEAN", Color("#687e91"))
-		_draw_control(Rect2(455, 420, 180, 92), "LEAN", Color("#687e91"))
-		_draw_control(Rect2(746, 420, 190, 92), "GAS", Color("#d76d38"))
+	_panel(Rect2(20, 18, 205, 78), Color("#172b32"))
+	_text("DISTANCE", Vector2(38, 45), 13, Color("#b9d5d9"))
+	_text("%dm" % int(run_distance), Vector2(38, 81), 29, Color.WHITE)
+	_panel(Rect2(240, 18, 140, 78), Color("#172b32"))
+	_text("COINS", Vector2(258, 45), 13, Color("#f3ca66"))
+	_text(str(run_coins), Vector2(258, 81), 29, Color.WHITE)
+	_panel(Rect2(705, 18, 235, 78), Color("#172b32"))
+	_text("FUEL", Vector2(723, 44), 13, Color.WHITE)
+	draw_rect(Rect2(723, 56, 195, 17), Color("#3b4b4f"))
+	draw_rect(Rect2(723, 56, 195.0 * fuel / fuel_capacity, 17), Color("#77cb68") if fuel > fuel_capacity * 0.25 else Color("#e36b4d"))
+	_control(Rect2(20, 420, 190, 96), "BRAKE", Color("#477e9a"))
+	_control(Rect2(235, 420, 190, 96), "LEAN BACK", Color("#536d7a"))
+	_control(Rect2(450, 420, 190, 96), "LEAN FWD", Color("#536d7a"))
+	_control(Rect2(750, 420, 190, 96), "THROTTLE", Color("#d87537"))
 
-func _draw_menu() -> void:
-	draw_rect(Rect2(0, 0, W, H), Color(0.025, 0.07, 0.09, 0.58))
-	_draw_panel(Rect2(235, 76, 490, 380), Color("#172a32"))
-	_draw_text("HILL CLIMB", Vector2(480, 157), 48, Color("#f5b84b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("ADVENTURE", Vector2(480, 207), 29, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("Drive • Climb • Collect", Vector2(480, 255), 20, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_panel(Rect2(340, 330, 280, 92), Color("#df813d"))
-	_draw_text("TAP TO START", Vector2(480, 387), 27, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("A tiny off-road journey", Vector2(480, 445), 15, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+func _draw_home() -> void:
+	_overlay()
+	_panel(Rect2(170, 42, 620, 440), Color("#17262e"))
+	_text("RIDGELINE", Vector2(480, 128), 56, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 169), 20, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("A new climb begins here", Vector2(480, 213), 18, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(85, 340, 220, 78), Color("#386d79"))
+	_text("GARAGE", Vector2(195, 387), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(350, 340, 260, 78), Color("#d47a36"))
+	_text("START DRIVE", Vector2(480, 387), 25, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(655, 340, 220, 78), Color("#536a7b"))
+	_text("UPGRADES", Vector2(765, 387), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("BANK  %d     BEST  %dm" % [profile.bank, best_distance], Vector2(480, 455), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
 
-func _draw_game_over() -> void:
-	draw_rect(Rect2(0, 0, W, H), Color(0.025, 0.07, 0.09, 0.62))
-	_draw_panel(Rect2(285, 95, 390, 350), Color("#172a32"))
-	_draw_text("RUN COMPLETE", Vector2(480, 165), 34, Color("#f5b84b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("Distance   %dm" % int(distance), Vector2(480, 230), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("Coins   %d" % coins, Vector2(480, 270), 21, Color("#f8d56b"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_text("Best   %dm" % int(best_distance), Vector2(480, 307), 17, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
-	_draw_panel(Rect2(340, 345, 280, 72), Color("#df813d"))
-	_draw_text("TAP TO RETRY", Vector2(480, 390), 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+func _draw_garage() -> void:
+	_overlay()
+	_panel(Rect2(100, 30, 760, 470), Color("#17262e"))
+	_text("VEHICLE GARAGE", Vector2(480, 90), 37, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	var spec: Dictionary = profile.VEHICLES[profile.selected_vehicle]
+	_text("%02d / %02d" % [profile.selected_vehicle + 1, profile.VEHICLES.size()], Vector2(480, 132), 16, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_draw_showcase_vehicle(Vector2(480, 235), Color(str(spec.color)), profile.selected_vehicle)
+	_text(str(spec.name), Vector2(480, 320), 29, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text(str(spec.description), Vector2(480, 350), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("POWER %.1f     SUSPENSION %.1f     GRIP %.1f" % [float(spec.power), float(spec.suspension), float(spec.grip)], Vector2(480, 382), 15, Color("#e1d7b6"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(235, 280, 100, 70), Color("#3c6874"))
+	_text("<", Vector2(285, 326), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(625, 280, 100, 70), Color("#3c6874"))
+	_text(">", Vector2(675, 326), 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var owned := profile.unlocked.has(profile.selected_vehicle)
+	_panel(Rect2(350, 390, 260, 70), Color("#d47a36") if owned else Color("#4d8b65"))
+	_text("SELECT VEHICLE" if owned else "UNLOCK  %d" % int(spec.price), Vector2(480, 433), 21, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("BANK  %d" % profile.bank, Vector2(790, 465), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_back_button()
 
-func _draw_panel(rect: Rect2, color: Color) -> void:
+func _draw_showcase_vehicle(center: Vector2, color: Color, index: int) -> void:
+	draw_set_transform(center, 0.0, Vector2(1.55, 1.55))
+	var wheel_y := 20.0
+	for wx in [-55.0, 55.0]:
+		draw_circle(Vector2(wx, wheel_y), 22.0 if index == 3 else 17.0, Color("#202a30"))
+		draw_circle(Vector2(wx, wheel_y), 9.0, Color("#aab8ba"))
+	draw_colored_polygon(PackedVector2Array([Vector2(-78, -12), Vector2(-54, -45), Vector2(28, -45), Vector2(70, -10), Vector2(76, 14), Vector2(-78, 14)]), color)
+	draw_colored_polygon(PackedVector2Array([Vector2(-30, -40), Vector2(20, -40), Vector2(44, -15), Vector2(-43, -15)]), Color("#b9dce2"))
+	draw_set_transform(Vector2.ZERO)
+
+func _draw_upgrades() -> void:
+	_overlay()
+	_panel(Rect2(125, 35, 710, 465), Color("#17262e"))
+	_text("WORKSHOP UPGRADES", Vector2(480, 92), 37, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Improve your machine. Each level changes real handling.", Vector2(480, 128), 16, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	var names := ["ENGINE", "SUSPENSION", "TIRES & GRIP", "FUEL TANK"]
+	var keys := ["engine", "suspension", "tires", "fuel"]
+	for i in range(4):
+		var y := 205.0 + float(i) * 58.0
+		var level := int(profile.upgrades[keys[i]])
+		var cost := 120 + level * 145
+		_panel(Rect2(250, y, 470, 48), Color("#29404a"))
+		_text(names[i], Vector2(270, y + 30), 17, Color.WHITE)
+		for k in range(5):
+			draw_rect(Rect2(430 + float(k) * 27.0, y + 15, 19, 18), Color("#e7b24a") if k < level else Color("#52656a"))
+		_text("MAX" if level >= 5 else "%d" % cost, Vector2(690, y + 30), 15, Color("#f0d28b"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_text("BANK  %d" % profile.bank, Vector2(790, 465), 17, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_back_button()
+
+func _draw_results() -> void:
+	_overlay()
+	_panel(Rect2(260, 60, 440, 420), Color("#17262e"))
+	_text("RUN FINISHED", Vector2(480, 130), 38, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("%dm" % int(run_distance), Vector2(480, 205), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text("DISTANCE", Vector2(480, 235), 15, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Coins collected  %d" % run_coins, Vector2(480, 285), 20, Color("#f1d58a"), HORIZONTAL_ALIGNMENT_CENTER)
+	_text("Career bank  %d" % profile.bank, Vector2(480, 320), 18, Color("#b9d5d9"), HORIZONTAL_ALIGNMENT_CENTER)
+	_panel(Rect2(350, 370, 260, 72), Color("#d47a36"))
+	_text("DRIVE AGAIN", Vector2(480, 415), 23, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_back_button()
+
+func _overlay() -> void:
+	draw_rect(Rect2(0, 0, W, H), Color(0.025, 0.055, 0.07, 0.55))
+
+func _back_button() -> void:
+	_panel(Rect2(35, 445, 170, 62), Color("#3c6874"))
+	_text("BACK", Vector2(120, 485), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+
+func _panel(rect: Rect2, color: Color) -> void:
 	draw_rect(rect, color)
-	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 4)), Color(1, 1, 1, 0.16))
+	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 4)), Color(1, 1, 1, 0.13))
 
-func _draw_control(rect: Rect2, label: String, color: Color) -> void:
-	draw_rect(rect, Color(0.04, 0.08, 0.11, 0.58))
+func _control(rect: Rect2, label: String, color: Color) -> void:
+	draw_rect(rect, Color(0.035, 0.07, 0.09, 0.68))
 	draw_rect(Rect2(rect.position, Vector2(rect.size.x, 5)), color)
-	_draw_text(label, rect.position + Vector2(rect.size.x * 0.5, 56), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_text(label, rect.position + Vector2(rect.size.x * 0.5, 59), 19, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 
-func _draw_text(value: String, pos: Vector2, size: int, color: Color, align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> void:
+func _text(value: String, pos: Vector2, size: int, color: Color, align: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> void:
 	draw_string(font, pos, value, align, -1, size, color)
