@@ -86,6 +86,10 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
           cat "$HOME/.config/godot/editor_settings-4.4.tres"
           ls -lh "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
+      - name: Run Android startup smoke test
+        run: |
+          set -eux
+          godot --headless --verbose --path "$GITHUB_WORKSPACE/game" --quit-after 3
       - name: Export APK
         run: |
           set -eux
