@@ -54,13 +54,23 @@ jobs:
           JAVA_BIN="$(readlink -f "$(command -v javac)")"
           JAVA_HOME_DIR="$(dirname "$(dirname "$JAVA_BIN")")"
           mkdir -p "$HOME/.config/godot"
-          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<EOF
           [gd_resource type="EditorSettings" format=3]
           [resource]
           export/android/android_sdk_path = "$ANDROID_HOME"
           export/android/java_sdk_path = "$JAVA_HOME_DIR"
+          export/android/debug_keystore = "$HOME/.android/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
           EOF
+          test -x "$JAVA_HOME_DIR/bin/java"
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          test -s "$HOME/.android/debug.keystore"
+          test -s "$HOME/.config/godot/editor_settings-4.4.tres"
           echo "JAVA_HOME=$JAVA_HOME_DIR"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "Godot editor settings:"
+          cat "$HOME/.config/godot/editor_settings-4.4.tres"
           ls -lh "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
       - name: Export APK
         run: |
