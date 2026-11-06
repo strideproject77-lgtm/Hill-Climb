@@ -43,13 +43,30 @@ var stunt_count := 0
 var checkpoint_count := 0
 var next_checkpoint_distance := 1000.0
 var progression_notice := ""
+var startup_error := ""
 
 func _ready() -> void:
+	set_process(true)
 	font = ThemeDB.fallback_font
+	if font == null:
+		startup_error = "Font service is unavailable."
+		push_error("Stride startup: ThemeDB fallback font is unavailable.")
+		queue_redraw()
+		return
 	car = PhysicsScript.new()
 	profile = ProfileScript.new()
 	anti_cheat = AntiCheatScript.new()
+	if profile == null or anti_cheat == null or car == null:
+		startup_error = "A required game component could not be initialized."
+		push_error("Stride startup: a required runtime component is null.")
+		queue_redraw()
+		return
 	profile.load_profile()
+	if profile.MAPS.is_empty() or profile.VEHICLES.is_empty():
+		startup_error = "Game data could not be loaded."
+		push_error("Stride startup: vehicle or map data is empty.")
+		queue_redraw()
+		return
 	if not anti_cheat.validate_profile(profile.bank, profile.gems, profile.selected_vehicle, profile.selected_map, profile.VEHICLES.size(), profile.MAPS.size()):
 		profile.bank = 0
 		profile.gems = 0
@@ -57,7 +74,8 @@ func _ready() -> void:
 		profile.selected_map = 0
 	best_distance = profile.best_distance
 	_reset_run()
-	set_process(true)
+	startup_error = ""
+	queue_redraw()
 
 func ground_height(world_x: float) -> float:
 	match profile.selected_map:
@@ -110,6 +128,9 @@ func _reset_run() -> void:
 	_clear_controls()
 
 func _process(delta: float) -> void:
+	if profile == null or car == null or not startup_error.is_empty():
+		queue_redraw()
+		return
 	var dt := minf(delta, 0.033)
 	if game_state == "playing":
 		_update_run(dt)
@@ -392,6 +413,19 @@ func _repair_vehicle() -> void:
 		profile.save_profile()
 
 func _draw() -> void:
+	if font == null:
+		font = ThemeDB.fallback_font
+	if profile == null or car == null or font == null or profile.MAPS.is_empty() or profile.VEHICLES.is_empty():
+		draw_rect(Rect2(0, 0, W, H), Color("#182631"))
+		var fallback_font: Font = ThemeDB.fallback_font
+		if fallback_font != null:
+			draw_string(fallback_font, Vector2(0, 245), "HILL CLIMB", HORIZONTAL_ALIGNMENT_CENTER, W, 34, Color("#f0b44b"))
+			draw_string(fallback_font, Vector2(0, 282), startup_error if not startup_error.is_empty() else "INITIALIZING GAME...", HORIZONTAL_ALIGNMENT_CENTER, W, 17, Color("#d6e0df"))
+		return
+	if profile.selected_map < 0 or profile.selected_map >= profile.MAPS.size():
+		profile.selected_map = 0
+	if profile.selected_vehicle < 0 or profile.selected_vehicle >= profile.VEHICLES.size():
+		profile.selected_vehicle = 0
 	_draw_backdrop()
 	_draw_landscape()
 	if game_state == "playing" or game_state == "results":
