@@ -21,6 +21,21 @@ jobs:
           java -version
           test -d "$ANDROID_HOME"
           command -v keytool
+      - name: Install matching Android SDK platform and build tools
+        run: |
+          set -eux
+          SDKMANAGER="$(find "$ANDROID_HOME" -type f -name sdkmanager -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "Android SDK command-line tools (sdkmanager) were not found under $ANDROID_HOME" >&2
+            find "$ANDROID_HOME" -maxdepth 4 -type f | sort | head -200
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
+          "$SDKMANAGER" --list_installed
       - name: Validate project import
         run: godot --headless --editor --path game --quit
       - name: Install export templates and configure Android signing
@@ -71,7 +86,7 @@ jobs:
         run: |
           set -eux
           mkdir -p game/build
-          godot --headless --path game --export-debug "Android" game/build/hill-climb-adventure.apk
+          godot --headless --verbose --path game --export-debug "Android" game/build/hill-climb-adventure.apk
       - name: Verify APK archive
         run: |
           set -eux
