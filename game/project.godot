@@ -4,7 +4,6 @@ config_version=5
 [application]
 config/name="Stride Hill Climb"
 config/icon="res://assets/stride_icon.svg"
-config/description="Build your machine. Conquer every ridge."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/description="A lightweight original 2D hill-driving game."
