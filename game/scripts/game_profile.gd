@@ -34,7 +34,7 @@ var selected_map := 0
 var best_distance := 0
 var condition := 100.0
 var upgrades := {"engine":0,"suspension":0,"tires":0,"fuel":0,"transmission":0,"cooling":0}
-var unlocked := [0]
+var unlocked: Array = [0]
 var achievements: Array = []
 var stats := {"runs":0,"total_distance":0,"total_coins":0}
 
