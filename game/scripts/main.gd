@@ -150,6 +150,8 @@ func _input(event: InputEvent) -> void:
 			_release_touch(-1)
 	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_update_touch(-1, event.position)
+	elif event is InputEventKey:
+		_update_controls()
 
 func _handle_press(id: int, pos: Vector2) -> void:
 	if game_state != "playing":
