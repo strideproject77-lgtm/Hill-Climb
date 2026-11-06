@@ -36,6 +36,7 @@ func step(dt: float, gas: float, brake: float, lean: float, ground: Callable, sp
 	var grip: float = float(spec.get("grip", 1.0))
 	var wheelbase := HALF_WHEELBASE * 2.0
 	var old_vy := vy
+	impact = 0.0
 	var total_spring := 0.0
 	var total_torque := 0.0
 	var contacts := 0

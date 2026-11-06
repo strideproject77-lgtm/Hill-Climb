@@ -8,7 +8,7 @@ An original 2D off-road driving game built with Godot 4.4 for Android ARM64.
 - Four selectable vehicle classes with different mass, engine power, grip and suspension profiles
 - Garage with unlockable vehicles and persistent career progress
 - Four upgrade tracks: engine, suspension, tires and fuel capacity
-- Three procedural environments: Green Highlands, Desert Dunes and Frost Ridge
+- Three procedural environments: Green Highlands, Desert Dunes and Frost Ridge, each with its own terrain profile and surface grip
 - Fuel consumption, collectible fuel cans, coins, distance rewards and saved best distance
 - Touch controls designed for landscape mobile play
 - Reproducible Android ARM64 APK workflow

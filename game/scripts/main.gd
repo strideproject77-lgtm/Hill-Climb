@@ -76,6 +76,10 @@ func _process(delta: float) -> void:
 func _update_run(dt: float) -> void:
 	var lean := (1.0 if lean_right else 0.0) - (1.0 if lean_left else 0.0)
 	var spec: Dictionary = profile.vehicle_spec()
+	if profile.selected_map == 2:
+		spec["grip"] = float(spec.grip) * 0.68
+	elif profile.selected_map == 1:
+		spec["grip"] = float(spec.grip) * 0.92
 	car.step(dt, 1.0 if gas_pressed and fuel > 0.0 else 0.0, 1.0 if brake_pressed else 0.0, lean, Callable(self, "ground_height"), spec)
 	if gas_pressed and fuel > 0.0:
 		fuel = maxf(0.0, fuel - (0.72 + float(spec.power) * 0.22) * dt)
@@ -181,7 +185,7 @@ func _update_controls() -> void:
 func _handle_menu_press(pos: Vector2) -> void:
 	match game_state:
 		"home":
-			if Rect2(350, 340, 260, 78).has_point(pos):
+			if Rect2(445, 340, 230, 78).has_point(pos):
 				_reset_run()
 				game_state = "playing"
 			elif Rect2(45, 340, 180, 78).has_point(pos):
@@ -249,7 +253,6 @@ func _draw() -> void:
 	_draw_backdrop()
 	_draw_landscape()
 	if game_state == "playing" or game_state == "results":
-		_draw_track()
 		_draw_collectibles()
 		_draw_vehicle()
 		_draw_hud()
@@ -384,7 +387,7 @@ func _draw_hud() -> void:
 
 func _draw_home() -> void:
 	_overlay()
-	_panel(Rect2(170, 42, 620, 440), Color("#17262e"))
+	_panel(Rect2(40, 42, 880, 440), Color("#17262e"))
 	_text("RIDGELINE", Vector2(480, 128), 56, Color("#f0b44b"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("OFFROAD CHAMPIONSHIP", Vector2(480, 169), 20, Color("#d8e3df"), HORIZONTAL_ALIGNMENT_CENTER)
 	_text("A new climb begins here", Vector2(480, 213), 18, Color("#a9c2c5"), HORIZONTAL_ALIGNMENT_CENTER)
