@@ -20,18 +20,53 @@ jobs:
     steps:
       - name: Checkout game branch
         uses: actions/checkout@v4
-      - name: Verify Godot version
-        run: godot --version
+      - name: Verify toolchain
+        run: |
+          godot --version
+          java -version
+          test -d "$ANDROID_HOME"
+          command -v keytool
       - name: Validate project import
         run: godot --headless --editor --path game --quit
+      - name: Install export templates and configure Android signing
+        run: |
+          set -eux
+          TEMPLATE_VERSION="4.4.1.stable"
+          mkdir -p "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION"
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz" \
+            -o /tmp/godot-templates.tpz
+          mkdir -p /tmp/godot-templates
+          unzip -q /tmp/godot-templates.tpz -d /tmp/godot-templates
+          cp -a /tmp/godot-templates/templates/. "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair -v \
+            -keystore "$HOME/.android/debug.keystore" \
+            -storepass android -alias androiddebugkey -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US" \
+            -keyalg RSA -keysize 2048 -validity 10000
+          JAVA_BIN="$(readlink -f "$(command -v javac)")"
+          JAVA_HOME_DIR="$(dirname "$(dirname "$JAVA_BIN")")"
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME_DIR"
+          EOF
+          echo "JAVA_HOME=$JAVA_HOME_DIR"
+          ls -lh "$HOME/.local/share/godot/export_templates/$TEMPLATE_VERSION/"
       - name: Export APK
         run: |
+          set -eux
           mkdir -p game/build
           godot --headless --path game --export-debug "Android" game/build/hill-climb-adventure.apk
       - name: Verify APK archive
         run: |
+          set -eux
           test -s game/build/hill-climb-adventure.apk
           unzip -t game/build/hill-climb-adventure.apk
+          unzip -l game/build/hill-climb-adventure.apk | grep -E 'lib/arm64-v8a/.*\.so'
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
