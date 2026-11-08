@@ -1,4 +1,5 @@
 name: Stride Compatibility Game APK
+# Build trigger refreshed for the single-DEX compatibility test.
 
 on:
   push:
