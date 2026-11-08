@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build-apk:
-    name: Build and verify single-DEX Java Canvas APK
+    name: Build and inspect Java Canvas APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -40,34 +40,31 @@ jobs:
           test -n "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-          test -d "$ANDROID_HOME/platforms/android-35"
-          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
       - name: Compile debug APK
         working-directory: stride-compat-game
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify APK, exactly one DEX, manifest and native-library profile
+      - name: Inspect APK DEX and package profile
         run: |
           set -eux
           APK="stride-compat-game/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -t "$APK"
-          DEX_COUNT="$(unzip -Z1 "$APK" | grep -Ec '^classes([0-9]+)?\\.dex$' || true)"
-          echo "DEX count: $DEX_COUNT"
           echo "DEX entries:"
-          unzip -Z1 "$APK" | grep -E '^classes([0-9]+)?\\.dex$' || true
-          test "$DEX_COUNT" -eq 1
-          unzip -Z1 "$APK" | grep -qx 'classes.dex'
+          unzip -Z1 "$APK" | grep -E '^classes([0-9]+)?\.dex$' || true
+          DEX_COUNT="$(unzip -Z1 "$APK" | grep -Ec '^classes([0-9]+)?\.dex$' || true)"
+          echo "DEX count: $DEX_COUNT"
           unzip -Z1 "$APK" | grep -q 'AndroidManifest.xml'
-          if unzip -Z1 "$APK" | grep -qE '^lib/.*\\.so$'; then
-            echo "Unexpected native library in compatibility APK" >&2
+          if unzip -Z1 "$APK" | grep -qE '^lib/.*\.so$'; then
+            echo "Unexpected native library in APK" >&2
             exit 1
           fi
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
           grep -q "package: name='com.stride.compatgame.debug'" /tmp/apk-badging.txt
-          echo "Verified single-DEX Java Canvas APK with no packaged native libraries."
           ls -lh "$APK"
           sha256sum "$APK"
-      - name: Upload compatibility APK for inspection
+          test "$DEX_COUNT" -eq 1
+          echo "Verified exactly one DEX."
+      - name: Upload APK for inspection
         if: always() && hashFiles('stride-compat-game/app/build/outputs/apk/debug/app-debug.apk') != ''
         uses: actions/upload-artifact@v4
         with:
