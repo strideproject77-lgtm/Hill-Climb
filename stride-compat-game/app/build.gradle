@@ -22,7 +22,7 @@ android {
         debug { applicationIdSuffix ".debug"; versionNameSuffix "-debug" }
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt")
         }
     }
 }
