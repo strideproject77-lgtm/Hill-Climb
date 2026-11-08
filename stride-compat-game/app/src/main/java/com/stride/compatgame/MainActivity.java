@@ -61,8 +61,8 @@ public final class MainActivity extends Activity {
             distance+=speed*dt*.72f;
             wheelAngle+=speed*dt/22f;
             fuel-=(.55f+speed*.0024f)*dt;
-            if(distance>=nextCoin) { coins++; nextCoin+=260f; }
-            if(distance>=nextFuel) { fuel=Math.min(100f,fuel+28f); nextFuel+=1150f; }
+            if(distance+300f>=nextCoin) { coins++; nextCoin+=260f; }
+            if(distance+300f>=nextFuel) { fuel=Math.min(100f,fuel+28f); nextFuel+=1150f; }
             if(fuel<=0f) { fuel=0f; state=OVER; gas=false; brake=false; }
         }
 
@@ -160,7 +160,7 @@ public final class MainActivity extends Activity {
                 case MotionEvent.ACTION_MOVE:
                     if(state!=RUNNING) {
                         state=RUNNING; distance=0; speed=0; fuel=100; coins=0;
-                        nextCoin=260; nextFuel=1150; lastFrame=System.nanoTime();
+                        nextCoin=520; nextFuel=1450; lastFrame=System.nanoTime();
                     } else {
                         brake=x<W*.42f && y>H*.72f;
                         gas=x>W*.58f && y>H*.72f;
