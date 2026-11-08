@@ -22,7 +22,7 @@ public final class MainActivity extends Activity {
         setContentView(new GameView());
     }
 
-    private static final class GameView extends View {
+    private final class GameView extends View {
         private static final float W=960f, H=540f;
         private static final int MENU=0, RUNNING=1, OVER=2;
         private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
