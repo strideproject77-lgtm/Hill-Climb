@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   build-apk:
-    name: Build and verify Java Canvas APK
+    name: Build and verify single-DEX Java Canvas APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -45,27 +45,30 @@ jobs:
       - name: Compile debug APK
         working-directory: stride-compat-game
         run: gradle --no-daemon :app:assembleDebug
-      - name: Verify APK, DEX, manifest and native-library profile
+      - name: Verify APK, exactly one DEX, manifest and native-library profile
         run: |
           set -eux
           APK="stride-compat-game/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           unzip -t "$APK"
-          unzip -l "$APK" | grep -E 'classes[0-9]*\.dex'
-          unzip -l "$APK" | grep -q 'AndroidManifest.xml'
+          DEX_COUNT="$(unzip -Z1 "$APK" | grep -Ec '^classes([0-9]+)?\.dex$' || true)"
+          echo "DEX count: $DEX_COUNT"
+          test "$DEX_COUNT" -eq 1
+          unzip -Z1 "$APK" | grep -qx 'classes.dex'
+          unzip -Z1 "$APK" | grep -q 'AndroidManifest.xml'
           if unzip -Z1 "$APK" | grep -qE '^lib/.*\.so$'; then
             echo "Unexpected native library in compatibility APK" >&2
             exit 1
           fi
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
           grep -q "package: name='com.stride.compatgame.debug'" /tmp/apk-badging.txt
-          echo "Verified Java/Dex APK with no packaged native libraries."
+          echo "Verified single-DEX Java Canvas APK with no packaged native libraries."
           ls -lh "$APK"
           sha256sum "$APK"
       - name: Upload compatibility APK
         uses: actions/upload-artifact@v4
         with:
-          name: Pocket-Ridge-Stride-Compatibility-APK
+          name: Pocket-Ridge-Lite-Single-DEX-APK
           path: stride-compat-game/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
