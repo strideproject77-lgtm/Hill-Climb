@@ -47,8 +47,10 @@ jobs:
         working-directory: stride-compat-game
         run: |
           set -eux
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK"
           test -s "$APK"
+          echo "Inspecting APK: $APK"
           unzip -t "$APK"
           echo "DEX entries:"
           unzip -Z1 "$APK" | grep -E '^classes([0-9]+)?\.dex$' || true
@@ -66,10 +68,10 @@ jobs:
           test "$DEX_COUNT" -eq 1
           echo "Verified exactly one DEX."
       - name: Upload APK for inspection
-        if: always() && hashFiles('stride-compat-game/app/build/outputs/apk/release/app-release.apk') != ''
+        if: always() && hashFiles('stride-compat-game/app/build/outputs/apk/release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
           name: Pocket-Ridge-Lite-Single-DEX-APK
-          path: stride-compat-game/app/build/outputs/apk/release/app-release.apk
+          path: stride-compat-game/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
