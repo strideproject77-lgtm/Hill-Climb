@@ -44,9 +44,10 @@ jobs:
         working-directory: stride-compat-game
         run: gradle --no-daemon :app:assembleRelease
       - name: Inspect APK DEX and package profile
+        working-directory: stride-compat-game
         run: |
           set -eux
-          APK="stride-compat-game/app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           unzip -t "$APK"
           echo "DEX entries:"
