@@ -5,248 +5,92 @@ import android.os.Bundle;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Path;
 import android.view.MotionEvent;
 import android.view.View;
 
-/**
- * Pocket Ridge: a deliberately small Java/Canvas compatibility game.
- * Rendering is limited to Canvas color/scale/rect/circle/line/path primitives.
- */
+/** Pocket Ridge Lite: one-Activity, one-DEX Canvas smoke-test game. */
 public final class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        setContentView(new RidgeView());
+        setContentView(new GameView());
     }
 
-    private final class RidgeView extends View {
-        private static final float WORLD_W = 800f;
-        private static final float WORLD_H = 450f;
-        private static final int MENU = 0;
-        private static final int PLAYING = 1;
-        private static final int FINISHED = 2;
+    private final class GameView extends View {
+        private final Paint p = new Paint();
+        private float playerX = 400f;
+        private float obstacleX = 800f;
+        private float obstacleY = 270f;
+        private int score = 0;
+        private boolean started = false;
+        private boolean gameOver = false;
 
-        private final Paint paint = new Paint();
-        private final Path terrain = new Path();
-        private int mode = MENU;
-        private float travel;
-        private float speed;
-        private float fuel = 100f;
-        private int coins;
-        private boolean gas;
-        private boolean brake;
-        private int frame;
-
-        RidgeView() {
+        GameView() {
             super(MainActivity.this);
-            paint.setAntiAlias(false);
+            p.setAntiAlias(false);
+            setFocusable(true);
         }
 
-        private float clamp(float value, float low, float high) {
-            if (value < low) return low;
-            if (value > high) return high;
-            return value;
+        private void rect(Canvas c, int color, float l, float t, float r, float b) {
+            p.setColor(color);
+            p.setStyle(Paint.Style.FILL);
+            c.drawRect(l, t, r, b, p);
         }
 
-        // Triangle-wave hills avoid trigonometric/native-library dependencies.
-        private float ground(float worldX) {
-            float a = worldX % 320f;
-            if (a < 0f) a += 320f;
-            float first = a < 160f ? a / 160f : (320f - a) / 160f;
-            float b = (worldX + 91f) % 470f;
-            if (b < 0f) b += 470f;
-            float second = b < 235f ? b / 235f : (470f - b) / 235f;
-            return 330f - first * 62f - second * 24f;
-        }
-
-        private void color(int value) {
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(value);
-        }
-
-        @Override protected void onDraw(Canvas canvas) {
-            super.onDraw(canvas);
-            float sx = getWidth() / WORLD_W;
-            float sy = getHeight() / WORLD_H;
-            canvas.save();
-            canvas.scale(sx, sy);
-
-            if (mode == PLAYING) stepGame();
-
-            canvas.drawColor(Color.rgb(125, 190, 220));
-            drawSun(canvas);
-            drawDistantHills(canvas);
-            drawGround(canvas);
-            drawPickups(canvas);
-            drawVehicle(canvas);
-            drawControls(canvas);
-            drawStatus(canvas);
-
-            if (mode == MENU) drawOverlay(canvas, 0);
-            if (mode == FINISHED) drawOverlay(canvas, 1);
-
-            canvas.restore();
-            invalidate();
-        }
-
-        private void stepGame() {
-            frame++;
-            if (gas) speed += 0.9f;
-            else speed -= 0.22f;
-            if (brake) speed -= 1.35f;
-            speed = clamp(speed, 0f, 9f);
-            travel += speed;
-            fuel -= 0.012f + speed * 0.0009f;
-            if (frame % 80 == 0 && speed > 1f) coins++;
-            if (fuel <= 0f) {
-                fuel = 0f;
-                mode = FINISHED;
-                gas = false;
-                brake = false;
+        @Override protected void onDraw(Canvas c) {
+            super.onDraw(c);
+            float sx = getWidth() / 800f;
+            float sy = getHeight() / 450f;
+            c.save();
+            c.scale(sx, sy);
+            c.drawColor(Color.rgb(126, 190, 220));
+            p.setColor(Color.rgb(255, 224, 117));
+            c.drawCircle(690f, 70f, 28f, p);
+            rect(c, Color.rgb(95, 155, 112), 0f, 320f, 800f, 450f);
+            rect(c, Color.rgb(105, 76, 52), 0f, 345f, 800f, 450f);
+            rect(c, Color.rgb(230, 111, 55), playerX - 24f, 290f, playerX + 24f, 338f);
+            rect(c, Color.rgb(35, 40, 44), playerX - 19f, 333f, playerX - 7f, 345f);
+            rect(c, Color.rgb(35, 40, 44), playerX + 7f, 333f, playerX + 19f, 345f);
+            rect(c, Color.rgb(55, 70, 78), obstacleX, obstacleY, obstacleX + 28f, 345f);
+            rect(c, Color.rgb(25, 42, 48), 18f, 18f, 150f, 62f);
+            for (int i = 0; i < score && i < 8; i++) {
+                p.setColor(Color.rgb(255, 204, 48));
+                c.drawCircle(35f + i * 14f, 40f, 4f, p);
             }
-        }
-
-        private void drawSun(Canvas c) {
-            color(Color.rgb(255, 224, 117));
-            c.drawCircle(690f, 75f, 31f, paint);
-        }
-
-        private void drawDistantHills(Canvas c) {
-            color(Color.rgb(104, 157, 130));
-            terrain.reset();
-            terrain.moveTo(0f, WORLD_H);
-            for (int x = 0; x <= 800; x += 20) {
-                float y = 260f + ground(travel * 0.25f + x) * 0.18f;
-                terrain.lineTo(x, y);
+            if (!started || gameOver) {
+                rect(c, Color.rgb(28, 43, 50), 250f, 155f, 550f, 285f);
+                rect(c, Color.rgb(162, 218, 104), 315f, 235f, 485f, 265f);
+                p.setColor(Color.WHITE);
+                c.drawCircle(400f, 205f, 18f, p);
             }
-            terrain.lineTo(WORLD_W, WORLD_H);
-            terrain.close();
-            c.drawPath(terrain, paint);
-        }
+            c.restore();
 
-        private void drawGround(Canvas c) {
-            color(Color.rgb(115, 79, 51));
-            terrain.reset();
-            terrain.moveTo(0f, WORLD_H);
-            for (int x = 0; x <= 800; x += 8) {
-                terrain.lineTo(x, ground(travel + x));
-            }
-            terrain.lineTo(WORLD_W, WORLD_H);
-            terrain.close();
-            c.drawPath(terrain, paint);
-
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(7f);
-            paint.setColor(Color.rgb(111, 183, 79));
-            terrain.reset();
-            for (int x = 0; x <= 800; x += 8) {
-                float y = ground(travel + x);
-                if (x == 0) terrain.moveTo(x, y);
-                else terrain.lineTo(x, y);
-            }
-            c.drawPath(terrain, paint);
-            paint.setStyle(Paint.Style.FILL);
-        }
-
-        private void drawPickups(Canvas c) {
-            // Repeating pickups are visual-only score markers in this first slice.
-            for (int i = 0; i < 5; i++) {
-                float world = ((int)(travel / 360f) * 360f) + 210f + i * 360f;
-                float x = world - travel + 300f;
-                if (x < 12f || x > 788f) continue;
-                float y = ground(world) - 34f;
-                color(Color.rgb(255, 204, 48));
-                c.drawCircle(x, y, 10f, paint);
-                color(Color.rgb(255, 245, 190));
-                c.drawCircle(x - 3f, y - 3f, 3f, paint);
-            }
-        }
-
-        private void drawVehicle(Canvas c) {
-            float x = 300f;
-            float y = ground(travel + x);
-            color(Color.rgb(231, 111, 55));
-            c.drawRect(x - 38f, y - 42f, x + 38f, y - 13f, paint);
-            color(Color.rgb(49, 75, 83));
-            c.drawRect(x - 8f, y - 38f, x + 20f, y - 19f, paint);
-            color(Color.rgb(27, 30, 32));
-            c.drawCircle(x - 24f, y - 8f, 12f, paint);
-            c.drawCircle(x + 25f, y - 8f, 12f, paint);
-            color(Color.rgb(180, 190, 190));
-            c.drawCircle(x - 24f, y - 8f, 5f, paint);
-            c.drawCircle(x + 25f, y - 8f, 5f, paint);
-        }
-
-        private void drawControls(Canvas c) {
-            color(Color.rgb(38, 53, 58));
-            c.drawRect(28f, 366f, 205f, 432f, paint);
-            c.drawRect(595f, 366f, 772f, 432f, paint);
-            color(Color.rgb(245, 245, 230));
-            c.drawLine(78f, 399f, 155f, 399f, paint);
-            c.drawLine(116f, 380f, 116f, 418f, paint);
-            c.drawLine(650f, 399f, 718f, 399f, paint);
-            c.drawLine(684f, 380f, 684f, 418f, paint);
-        }
-
-        private void drawStatus(Canvas c) {
-            color(Color.rgb(27, 43, 48));
-            c.drawRect(18f, 16f, 270f, 74f, paint);
-            color(Color.rgb(255, 255, 255));
-            c.drawRect(34f, 34f, 240f, 43f, paint);
-            color(Color.rgb(102, 202, 91));
-            c.drawRect(34f, 34f, 34f + 206f * fuel / 100f, 43f, paint);
-            // Score is represented by coin markers; no text/font API is required.
-            for (int i = 0; i < coins && i < 8; i++) {
-                color(Color.rgb(255, 204, 48));
-                c.drawCircle(40f + i * 22f, 59f, 5f, paint);
-            }
-        }
-
-        private void drawOverlay(Canvas c, int finished) {
-            color(Color.rgb(29, 45, 50));
-            c.drawRect(215f, 145f, 585f, 300f, paint);
-            color(Color.rgb(162, 218, 104));
-            c.drawRect(270f, 245f, 530f, 278f, paint);
-            // A different center marker indicates start vs restart without text rendering.
-            color(finished == 0 ? Color.rgb(54, 104, 66) : Color.rgb(128, 75, 43));
-            c.drawCircle(400f, 211f, 27f, paint);
-            color(Color.WHITE);
-            c.drawRect(393f, 198f, 407f, 224f, paint);
-        }
-
-        private void startNewRun() {
-            mode = PLAYING;
-            travel = 0f;
-            speed = 0f;
-            fuel = 100f;
-            coins = 0;
-            frame = 0;
-            gas = false;
-            brake = false;
-        }
-
-        @Override public boolean onTouchEvent(MotionEvent event) {
-            float x = event.getX() * WORLD_W / Math.max(1, getWidth());
-            float y = event.getY() * WORLD_H / Math.max(1, getHeight());
-            int action = event.getActionMasked();
-
-            if (mode != PLAYING) {
-                if (action == MotionEvent.ACTION_DOWN) {
-                    startNewRun();
-                    invalidate();
+            if (started && !gameOver) {
+                obstacleX -= 5f;
+                if (obstacleX < -30f) {
+                    obstacleX = 820f;
+                    obstacleY = 250f + (score % 3) * 20f;
+                    score++;
                 }
-                return true;
+                if (obstacleX < playerX + 18f && obstacleX + 28f > playerX - 18f
+                        && obstacleY < 338f) {
+                    gameOver = true;
+                }
+                postInvalidateDelayed(16L);
             }
+        }
 
+        @Override public boolean onTouchEvent(MotionEvent e) {
+            int action = e.getActionMasked();
             if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
-                gas = x > 560f && y > 350f;
-                brake = x < 240f && y > 350f;
-                invalidate();
-                return true;
-            }
-            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-                gas = false;
-                brake = false;
+                float x = e.getX() * 800f / Math.max(1, getWidth());
+                if (!started || gameOver) {
+                    started = true;
+                    gameOver = false;
+                    score = 0;
+                    obstacleX = 820f;
+                } else {
+                    playerX = Math.max(45f, Math.min(755f, x));
+                }
                 invalidate();
                 return true;
             }
