@@ -14,6 +14,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+    lint {
+        // This APK is a local Stride compatibility fixture, not a Play Store release.
+        checkReleaseBuilds false
+    }
     buildTypes {
         debug { applicationIdSuffix ".debug"; versionNameSuffix "-debug" }
         release {
