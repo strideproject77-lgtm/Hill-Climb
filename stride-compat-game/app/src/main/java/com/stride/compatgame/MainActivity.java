@@ -2,7 +2,6 @@ package com.stride.compatgame;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.graphics.Color;
 import android.widget.TextView;
 import android.view.MotionEvent;
 
@@ -20,8 +19,8 @@ public final class MainActivity extends Activity {
         steps = 0;
         screen = new TextView(this);
         screen.setTextSize(26.0f);
-        screen.setTextColor(Color.WHITE);
-        screen.setBackgroundColor(Color.rgb(30, 43, 54));
+        screen.setTextColor(0xffffffff);
+        screen.setBackgroundColor(0xff1e2b36);
         screen.setText("TAP TRAIL\n\nTap anywhere to start\n\nReach the summit in 5 taps!");
         setContentView(screen);
     }
