@@ -2,26 +2,25 @@ package com.stride.compatgame;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.widget.TextView;
 import android.view.MotionEvent;
+import android.widget.TextView;
 
 /**
- * Tap Trail: a deliberately small Android game for Stride's currently
- * implemented Activity, MotionEvent and TextView framework surface.
- * It avoids custom View drawing, Canvas, native libraries and third-party APIs.
+ * Tap Blink: a tiny Stride compatibility app using only Activity,
+ * MotionEvent and TextView APIs. No Canvas, custom View or native code.
  */
 public final class MainActivity extends Activity {
     private TextView screen;
-    private int steps;
+    private boolean bright;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        steps = 0;
+        bright = false;
         screen = new TextView(this);
-        screen.setTextSize(26.0f);
+        screen.setTextSize(28.0f);
         screen.setTextColor(0xffffffff);
-        screen.setBackgroundColor(0xff1e2b36);
-        screen.setText("TAP TRAIL\n\nTap anywhere to start\n\nReach the summit in 5 taps!");
+        screen.setBackgroundColor(0xff101820);
+        screen.setText("TAP BLINK\n\nTap anywhere!\n\nEach tap makes the screen blink.");
         setContentView(screen);
     }
 
@@ -30,24 +29,17 @@ public final class MainActivity extends Activity {
             return true;
         }
 
-        if (steps == 0) {
-            steps = 1;
-            screen.setText("TAP TRAIL\n\nTrail started!\n\n1 / 5 steps\n\nKeep tapping");
-        } else if (steps == 1) {
-            steps = 2;
-            screen.setText("TAP TRAIL\n\nNice pace!\n\n2 / 5 steps\n\nKeep going");
-        } else if (steps == 2) {
-            steps = 3;
-            screen.setText("TAP TRAIL\n\nHalfway there!\n\n3 / 5 steps\n\nOne more push");
-        } else if (steps == 3) {
-            steps = 4;
-            screen.setText("TAP TRAIL\n\nAlmost at the top!\n\n4 / 5 steps\n\nFinal tap");
-        } else if (steps == 4) {
-            steps = 5;
-            screen.setText("TAP TRAIL\n\nSUMMIT REACHED!\n\n5 / 5 steps\n\nTap to play again");
+        bright = !bright;
+        if (bright) {
+            screen.setBackgroundColor(0xff35c9ff);
+            screen.setTextColor(0xff101820);
+            screen.setText("✦ BLINK! ✦\n\nTap detected\nX: " + (int) event.getX()
+                + "   Y: " + (int) event.getY() + "\n\nTap again to blink");
         } else {
-            steps = 0;
-            screen.setText("TAP TRAIL\n\nNew trail!\n\nTap to start\n\nReach the summit in 5 taps!");
+            screen.setBackgroundColor(0xff101820);
+            screen.setTextColor(0xffffffff);
+            screen.setText("TAP BLINK\n\nBlink!\nX: " + (int) event.getX()
+                + "   Y: " + (int) event.getY() + "\n\nTap anywhere");
         }
         return true;
     }
