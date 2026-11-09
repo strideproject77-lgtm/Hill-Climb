@@ -1,4 +1,4 @@
-name: Tap Blink APK
+name: Pocket Calculator APK
 
 on:
   push:
@@ -13,16 +13,16 @@ permissions:
   contents: read
 
 concurrency:
-  group: tap-blink-apk-${{ github.ref }}
+  group: pocket-calculator-apk-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build-apk:
-    name: Build and inspect Tap Blink APK
+    name: Build and inspect Pocket Calculator APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout Tap Blink
+      - name: Checkout calculator source
         uses: actions/checkout@v4
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -58,16 +58,16 @@ jobs:
             exit 1
           fi
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | tee /tmp/apk-badging.txt
-          grep -q "package: name='com.stride.tapblink'" /tmp/apk-badging.txt
+          grep -q "package: name='com.stride.pocketcalculator'" /tmp/apk-badging.txt
           test "$DEX_COUNT" -eq 1
           ls -lh "$APK"
           sha256sum "$APK"
-          echo "Verified one-DEX Tap Blink APK."
+          echo "Verified one-DEX Pocket Calculator APK."
       - name: Upload APK artifact
         if: always() && hashFiles('stride-compat-game/app/build/outputs/apk/release/*.apk') != ''
         uses: actions/upload-artifact@v4
         with:
-          name: Tap-Blink-APK
+          name: Pocket-Calculator-APK
           path: stride-compat-game/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14
