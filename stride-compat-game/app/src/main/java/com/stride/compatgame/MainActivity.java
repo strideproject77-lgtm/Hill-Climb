@@ -90,7 +90,7 @@ public final class MainActivity extends Activity {
         if (width <= 0 || height <= 0) return true;
 
         // Display occupies the upper portion; the five key rows fill the rest.
-        float keyAreaTop = height * 0.34f;
+        float keyAreaTop = height * 0.17f;
         if (y < keyAreaTop) return true;
         int row = (int)((y - keyAreaTop) / ((height - keyAreaTop) / 5.0f));
         int col = (int)(x / (width / 4.0f));
@@ -98,8 +98,16 @@ public final class MainActivity extends Activity {
         if (row > 4) row = 4;
         if (col < 0) col = 0;
         if (col > 3) col = 3;
-        String key = KEYS[row][col];
-        if (row == 4 && col == 0 && x > width * 0.25f) key = "0";
+        String key;
+        if (row == 4) {
+            float segment = width / 5.0f;
+            if (x < segment * 2.0f) key = "0";
+            else if (x < segment * 3.0f) key = ".";
+            else if (x < segment * 4.0f) key = "⌫";
+            else key = "=";
+        } else {
+            key = KEYS[row][col];
+        }
         press(key);
         return true;
     }
