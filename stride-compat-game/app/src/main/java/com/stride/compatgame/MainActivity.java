@@ -12,13 +12,6 @@ import android.widget.TextView;
  * Surface. Input is handled by Activity.onTouchEvent using guest coordinates.
  */
 public final class MainActivity extends Activity {
-    private static final String[][] KEYS = {
-        {"AC", "+/-", "%", "÷"},
-        {"7", "8", "9", "×"},
-        {"4", "5", "6", "−"},
-        {"1", "2", "3", "+"},
-        {"0", ".", "⌫", "="}
-    };
     private static final int BLACK = 0xff000000;
     private static final int WHITE = 0xffffffff;
     private static final int ORANGE = 0xffff9f0a;
@@ -49,12 +42,12 @@ public final class MainActivity extends Activity {
         display.setBackgroundColor(BLACK);
         root.addView(display);
 
-        for (int row = 0; row < KEYS.length; row++) {
+        for (int row = 0; row < 5; row++) {
             LinearLayout keyRow = new LinearLayout(this);
             keyRow.setOrientation(LinearLayout.HORIZONTAL);
-            for (int col = 0; col < KEYS[row].length; col++) {
+            for (int col = 0; col < 4; col++) {
                 TextView key = new TextView(this);
-                key.setText(KEYS[row][col]);
+                key.setText(keyAt(row, col));
                 key.setTextSize(24.0f);
                 key.setTextColor(row == 0 && col < 3 ? BLACK : WHITE);
                 key.setBackgroundColor(row == 0 && col < 3 ? LIGHT : (col == 3 ? ORANGE : DARK));
@@ -63,6 +56,38 @@ public final class MainActivity extends Activity {
             root.addView(keyRow);
         }
         setContentView(root);
+    }
+
+    /** Returns the real calculator key label without a static multidimensional array. */
+    private String keyAt(int row, int col) {
+        if (row == 0) {
+            if (col == 0) return "AC";
+            if (col == 1) return "+/-";
+            if (col == 2) return "%";
+            return "÷";
+        }
+        if (row == 1) {
+            if (col == 0) return "7";
+            if (col == 1) return "8";
+            if (col == 2) return "9";
+            return "×";
+        }
+        if (row == 2) {
+            if (col == 0) return "4";
+            if (col == 1) return "5";
+            if (col == 2) return "6";
+            return "−";
+        }
+        if (row == 3) {
+            if (col == 0) return "1";
+            if (col == 1) return "2";
+            if (col == 2) return "3";
+            return "+";
+        }
+        if (col == 0) return "0";
+        if (col == 1) return ".";
+        if (col == 2) return "⌫";
+        return "=";
     }
 
     @Override public boolean onTouchEvent(MotionEvent event) {
@@ -75,7 +100,7 @@ public final class MainActivity extends Activity {
         int row = (int)(y / 320.0f) - 1;
         if (row < 0) return true;
         if (row > 4) row = 4;
-        press(KEYS[row][col]);
+        press(keyAt(row, col));
         if (display != null) display.setText(current);
         return true;
     }
