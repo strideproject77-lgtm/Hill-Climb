@@ -111,7 +111,7 @@ public final class MainActivity extends Activity {
             replaceInput = true; error = false;
         } else if (key.equals("+/-")) {
             if (!current.equals("0") && !error)
-                current = current.startsWith("-") ? current.substring(1) : "-" + current;
+                current = current.startsWith("-") ? current.substring(1) : "-".concat(current);
         } else if (key.equals("%")) {
             current = format(parse(current) / 100.0);
         } else if (key.equals("⌫")) {
@@ -120,13 +120,13 @@ public final class MainActivity extends Activity {
             else current = current.substring(0, current.length() - 1);
         } else if (key.equals(".")) {
             if (replaceInput || error) { current = "0."; replaceInput = false; error = false; }
-            else if (!current.contains(".")) current += ".";
+            else if (!current.contains(".")) current = current.concat(".");
         } else if (isOperator(key)) {
             stored = parse(current); pending = key; replaceInput = true;
         } else if (key.equals("=")) {
             if (!pending.equals("")) {
                 double result = calculate(stored, parse(current), pending);
-                if (Double.isNaN(result) || Double.isInfinite(result)) {
+                if (result != result || result > Double.MAX_VALUE || result < -Double.MAX_VALUE) {
                     current = "Error"; error = true;
                 } else current = format(result);
                 pending = ""; replaceInput = true;
@@ -134,7 +134,7 @@ public final class MainActivity extends Activity {
         } else {
             if (replaceInput || error || current.equals("0")) {
                 current = key; replaceInput = false; error = false;
-            } else if (current.length() < 14) current += key;
+            } else if (current.length() < 14) current = current.concat(key);
         }
     }
 
@@ -153,9 +153,6 @@ public final class MainActivity extends Activity {
     }
     private String format(double value) {
         if (value == 0.0) return "0";
-        if (Math.abs(value) < 1.0e12 && value == Math.rint(value)) return String.valueOf((long)value);
-        String result = String.valueOf(value);
-        if (result.length() > 12) result = String.format(java.util.Locale.US, "%.8g", value);
-        return result;
+        return String.valueOf(value);
     }
 }
