@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application android:allowBackup="false" android:label="Pocket Ridge"
+    <application android:allowBackup="false" android:label="Tap Blink"
         android:theme="@android:style/Theme.Material.Light.NoActionBar"
         android:usesCleartextTraffic="false">
         <activity android:name=".MainActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
-            android:exported="true" android:screenOrientation="landscape">
+            android:exported="true" android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
