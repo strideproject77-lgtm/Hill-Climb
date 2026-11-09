@@ -4,7 +4,7 @@ android {
     namespace "com.stride.compatgame"
     compileSdk 35
     defaultConfig {
-        applicationId "com.stride.compatgame"
+        applicationId "com.stride.tapblink"
         minSdk 23
         targetSdk 28
         versionCode 1
@@ -15,7 +15,6 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     lint {
-        // This APK is a local Stride compatibility fixture, not a Play Store release.
         checkReleaseBuilds false
     }
     buildTypes {
