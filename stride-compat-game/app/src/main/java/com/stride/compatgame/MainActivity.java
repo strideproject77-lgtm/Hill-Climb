@@ -6,21 +6,21 @@ import android.view.MotionEvent;
 import android.widget.TextView;
 
 /**
- * Tap Blink: a tiny Stride compatibility app using only Activity,
- * MotionEvent and TextView APIs. No Canvas, custom View or native code.
+ * Tap Blink: a minimal touch-response app using only bridged Android APIs.
+ * Each touch visibly toggles the screen; no demo content or fake game state.
  */
 public final class MainActivity extends Activity {
     private TextView screen;
-    private boolean bright;
+    private boolean blinkOn;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        bright = false;
+        blinkOn = false;
         screen = new TextView(this);
         screen.setTextSize(28.0f);
         screen.setTextColor(0xffffffff);
         screen.setBackgroundColor(0xff101820);
-        screen.setText("TAP BLINK\n\nTap anywhere!\n\nEach tap makes the screen blink.");
+        screen.setText("TAP BLINK\n\nTouch anywhere to blink");
         setContentView(screen);
     }
 
@@ -29,17 +29,15 @@ public final class MainActivity extends Activity {
             return true;
         }
 
-        bright = !bright;
-        if (bright) {
+        blinkOn = !blinkOn;
+        if (blinkOn) {
             screen.setBackgroundColor(0xff35c9ff);
             screen.setTextColor(0xff101820);
-            screen.setText("✦ BLINK! ✦\n\nTap detected\nX: " + (int) event.getX()
-                + "   Y: " + (int) event.getY() + "\n\nTap again to blink");
+            screen.setText("BLINK!");
         } else {
             screen.setBackgroundColor(0xff101820);
             screen.setTextColor(0xffffffff);
-            screen.setText("TAP BLINK\n\nBlink!\nX: " + (int) event.getX()
-                + "   Y: " + (int) event.getY() + "\n\nTap anywhere");
+            screen.setText("TAP BLINK\n\nTouch anywhere");
         }
         return true;
     }
