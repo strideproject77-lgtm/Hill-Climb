@@ -29,7 +29,7 @@ Track the vertical playable slice separately from total planned content. Count o
 1. **3D World Foundation — Source implemented; APK workflow #47 passed; device inspection pending**
 2. **Vehicle & Driving Foundation — Source implemented; validation pending**
    - Four-wheel VehicleBody, front steering/rear traction, suspension, throttle, brake, keyboard controls, generated sedan exterior, chase camera, mobile touch HUD, terrain and road collision.
-3. **Sialkot Geospatial Base Map — Planned**
+3. **Sialkot Geospatial Base Map — Pilot pipeline implemented; full municipal coverage pending**
    - Municipal boundary, full road graph, building footprints, waterways, railway and POIs imported from OSM with attribution and source metadata.
 4. **Sialkot Landmarks & Shopfronts — Planned**
    - Iqbal Manzil, Clock Tower/Saddar Bazaar, Holy Trinity Cathedral, Murray College, mapped markets and public businesses; varied ordinary shopfronts.
@@ -47,6 +47,17 @@ Track the vertical playable slice separately from total planned content. Count o
    - Main menu, pause, map, minimap, mission HUD, settings, garage and touch layouts.
 11. **Optimization & Release Readiness — Planned**
    - LOD, occlusion, memory, compression, frame pacing, APK size and device profiling.
+
+## Progress entry — 2026-11-14
+
+### Phase 3 — Sialkot Geospatial Base Map — Pilot pipeline implemented; validation pending
+- Added an Android-build data step that fetches a bounded central-Sialkot OpenStreetMap extract through public Overpass mirrors.
+- Added coordinate conversion to local metres and preserved OSM IDs/tags, names, ODbL attribution, retrieval timestamp, coverage bounds and per-layer counts.
+- Added batched runtime geometry for mapped roads, building footprints with basic height extrusion, railways and waterways.
+- Added an in-game SIALKOT / OPENSTREETMAP PILOT label; the old procedural test landscape remains only as a fallback when map data is unavailable.
+- Extra improvements: data refresh during APK builds, source metadata for later corrections, merged geometry to reduce scene-node overhead, and bounded feature counts for mobile memory.
+- Limitation: this is a central-city pilot rectangle, not a verified municipal boundary or complete 1:1 Sialkot map. POIs are preserved in the data but bespoke storefronts are not implemented yet.
+- Remaining: one consolidated Godot + APK validation; verify Overpass coverage and municipal boundary; add streaming/LOD and building collision; inspect on a real device. Phase 3 is not complete.
 
 ## Progress entry — 2026-11-14
 ### Phase 1 — 3D World Foundation

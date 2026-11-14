@@ -14,10 +14,23 @@ var vehicle: StrideVehicle
 var follow_camera: Camera3D
 var speed_label: Label
 var control_buttons: Dictionary = {}
+var using_sialkot_map := false
 
 func _ready() -> void:
 	_setup_noise()
 	_setup_environment()
+	var city_map = preload("res://scripts/sialkot_map.gd").new()
+	if city_map.load_city_map():
+		using_sialkot_map = true
+		add_child(city_map)
+		vehicle = StrideVehicle.new()
+		vehicle.name = "PlayerSedan"
+		vehicle.position = Vector3(0.0, 2.4, 0.0)
+		vehicle.rotation.y = PI * 0.5
+		add_child(vehicle)
+		_setup_camera()
+		_setup_mobile_hud()
+		return
 	_build_terrain()
 	_build_road()
 	_build_road_markings()
@@ -308,7 +321,7 @@ func _setup_mobile_hud() -> void:
 	root.add_child(speed_label)
 	var location := Label.new()
 	location.position=Vector2(26,57)
-	location.text="FREE DRIVE  •  PHYSICS TEST AREA"
+	location.text = "SIALKOT  •  OPENSTREETMAP PILOT" if using_sialkot_map else "FREE DRIVE  •  PHYSICS TEST AREA"
 	location.add_theme_font_size_override("font_size",12)
 	location.add_theme_color_override("font_color",Color("#d3c4a4"))
 	root.add_child(location)

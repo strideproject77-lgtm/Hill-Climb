@@ -29,3 +29,6 @@ cmake-build-*/
 .DS_Store
 .idea/
 .vscode/
+
+# Downloaded OSM extract is generated in CI and embedded in the APK
+game/data/sialkot_city.json
