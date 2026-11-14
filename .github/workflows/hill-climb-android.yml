@@ -1,4 +1,4 @@
-name: Hill Climb Android APK
+name: Stride Open World Android APK
 
 on:
   push:
@@ -89,33 +89,30 @@ jobs:
       - name: Run full main-scene startup and script-parse smoke test
         run: |
           set -eux
-          # Launch the actual project main scene, not just the editor/importer.
-          # This forces GDScript attached to the startup scene to parse and execute.
           godot --headless --verbose --path "$GITHUB_WORKSPACE/game" --quit-after 120
-      - name: Export APK
+      - name: Export Android ARM64 APK
         run: |
           set -eux
           mkdir -p "$GITHUB_WORKSPACE/game/build"
-          test -d "$GITHUB_WORKSPACE/game/build"
-          godot --headless --verbose --path "$GITHUB_WORKSPACE/game" --export-debug "Android" "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
-          test -s "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
+          godot --headless --verbose --path "$GITHUB_WORKSPACE/game" --export-debug "Android" "$GITHUB_WORKSPACE/game/build/stride-open-world.apk"
+          test -s "$GITHUB_WORKSPACE/game/build/stride-open-world.apk"
       - name: Verify APK archive
         run: |
           set -eux
-          test -s "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
-          unzip -t "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
-          unzip -l "$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk" | grep -E 'lib/arm64-v8a/.*\.so'
-      - name: Validate JIT-less ARM64 native-library profile
+          APK="$GITHUB_WORKSPACE/game/build/stride-open-world.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          unzip -l "$APK" | grep -E 'lib/arm64-v8a/.*\.so'
+      - name: Validate ARM64 native-library profile
         run: |
           set -eux
-          APK="$GITHUB_WORKSPACE/game/build/hill-climb-adventure.apk"
+          APK="$GITHUB_WORKSPACE/game/build/stride-open-world.apk"
           WORK="$(mktemp -d)"
           trap 'rm -rf "$WORK"' EXIT
           if ! command -v readelf >/dev/null 2>&1; then
             apt-get update
             apt-get install -y --no-install-recommends binutils
           fi
-          command -v readelf
           unzip -q "$APK" 'lib/*' -d "$WORK"
           find "$WORK/lib" -type f -name '*.so' -print > "$WORK/libraries.txt"
           test -s "$WORK/libraries.txt"
@@ -132,13 +129,12 @@ jobs:
             readelf -h "$LIB" > "$WORK/elf-header.txt"
             grep -q 'Class:.*ELF64' "$WORK/elf-header.txt"
             grep -q 'Machine:.*AArch64' "$WORK/elf-header.txt"
-            echo "ARM64 ELF verified: ${LIB##*/}"
           done < "$WORK/libraries.txt"
-          echo "JIT-less readiness checks passed: APK contains ARM64 ELF libraries only."
+          echo "ARM64 native-library validation passed."
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ridgeline-offroad-android-arm64
-          path: game/build/hill-climb-adventure.apk
+          name: stride-open-world-android-arm64
+          path: game/build/stride-open-world.apk
           if-no-files-found: error
           retention-days: 14

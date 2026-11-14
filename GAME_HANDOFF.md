@@ -7,6 +7,8 @@ Updated: 2026-11-14
 - Active branch: `hill-climb-game`
 - Engine: Godot 4.4.1
 - Target: Android ARM64 APK, built by GitHub Actions
+- Application ID: `com.strideproject.openworld`
+- APK artifact: `stride-open-world-android-arm64`
 - Main scene: `game/scenes/main.tscn`
 - Production APK workflow: `.github/workflows/hill-climb-android.yml`
 
@@ -53,6 +55,8 @@ Replace the former 2D Hill Climb game with an original, realistic 3D open-world 
 - Added layered-noise terrain mesh, a winding asphalt road and dashed center markings.
 - Added procedural vegetation, distant ridge silhouettes, filmic sky and late-afternoon directional lighting.
 - Switched the game identity and viewport to a landscape 3D open-world direction.
+- Added a dedicated Android package identity and renamed the APK/artifact for the new game.
+- APK export remains automatic on pushes to `hill-climb-game` and can be manually dispatched in GitHub Actions.
 - Extra improvement: created an explicit roadmap/handoff and honest scope notes so later work does not confuse the world foundation with a complete playable game.
 - Remaining: run the consolidated Godot import/startup and Android ARM64 APK workflow; visually inspect the generated APK on a physical Android device; proceed to Phase 2 player/vehicle foundation.
 - Tests: deferred to the consolidated validation pass.

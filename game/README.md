@@ -11,15 +11,16 @@ This is an original game inspired by the broad genre and production values of mo
 ## Current implementation
 
 - Phase 1: 3D rendering and procedural world foundation.
-- Procedural rolling terrain with layered noise.
-- Procedural asphalt road with curvature and center markings.
+- Procedural rolling terrain with layered noise and a shader-based ground material.
+- Curved asphalt road with dashed center markings.
 - Procedural vegetation and distant ridge silhouettes.
 - Filmic sky, late-afternoon directional lighting, and mobile-compatible rendering.
-- Android ARM64 APK export remains automated through GitHub Actions.
+- Android ARM64 APK export is automated through GitHub Actions.
+- Android application identity: Stride Open World (`com.strideproject.openworld`).
 
 ## Build
 
-The GitHub Actions workflow in `.github/workflows/hill-climb-android.yml` imports the Godot project, runs a headless startup/parse smoke test, exports an Android ARM64 APK, validates the archive and native ABI, and uploads the APK as a workflow artifact.
+The GitHub Actions workflow in `.github/workflows/hill-climb-android.yml` imports the Godot project, runs a headless startup/parse smoke test, exports an Android ARM64 APK named `stride-open-world.apk`, validates the archive and native ABI, and uploads the `stride-open-world-android-arm64` artifact.
 
 No local PC build is required for the normal development workflow. Download the APK artifact from the completed GitHub Actions run.
 
