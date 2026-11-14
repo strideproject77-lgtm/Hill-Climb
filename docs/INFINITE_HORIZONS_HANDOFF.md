@@ -96,7 +96,7 @@ Do not claim that a feature is complete merely because a script, placeholder, mo
 ## 5. World design — Sialkot
 
 ### Geographic accuracy
-The long-term geographic target is the real Sialkot municipal city area. **The initial playable-world scope is narrower: main/urban Sialkot only, not the surrounding villages or distant outer areas.** The first coverage focus is the Clock Tower / Saddar Bazaar area, the Cantonment side, and the main-city corridor/connected streets in the direction of Mehrajke. Use source geometry and documented references for roads, intersections, buildings, railway corridors, waterways, land use and points of interest.
+The long-term geographic inspiration is real Sialkot, but the initial playable map will follow a **GTA-style adaptation rule**: recognizable real-world anchors and overall city character, with a deliberately compact, gameplay-first layout rather than strict 1:1 geography. The first focus is Clock Tower / Saddar Bazaar, Cantonment side and a connected main-city corridor towards Mehrajke. Roads and blocks may be shortened, simplified or repositioned for fun navigation, readability and mobile scale. Villages and distant outer areas are excluded from the initial map.
 
 OpenStreetMap is the initial geospatial source. Preserve required attribution and comply with its ODbL obligations. Keep source IDs, tags, retrieval date, coverage bounds and layer counts so data can be audited and refreshed.
 
@@ -304,7 +304,7 @@ These are estimates, not test results. Recalculate only when implementation and 
 
 ### Immediate unfinished work
 1. Inspect the latest branch and recent GitHub Actions runs before editing.
-2. Complete Phase 3 data coverage validation and define the initial urban playable boundary (Clock Tower / Saddar Bazaar, Cantonment side and the connected corridor towards Mehrajke); villages and distant outer areas are deferred.
+2. Complete Phase 3 data coverage validation and define the compact Sialkot-inspired playable layout around Clock Tower / Saddar Bazaar, Cantonment side and the Mehrajke corridor; apply GTA-style distance compression and street simplification, with villages and distant outer areas deferred.
 3. Add streamed map tiles, LOD and safe building collision.
 4. Render mapped POIs and begin high-quality landmark/shopfront production.
 5. Improve the visual identity and gameplay HUD in parallel with world work.
@@ -326,7 +326,7 @@ Phases are ordered by dependency, not by a rule that visuals must wait until the
 
 ### Phase 3 — Sialkot geospatial base map
 **Status:** Pilot pipeline implemented; phase incomplete.  
-**Initial playable scope:** Main urban Sialkot only — Clock Tower / Saddar Bazaar, Cantonment side and connected main-city streets towards Mehrajke. Exclude villages and distant outer areas for this first stage. Include every mapped minor street, residential gali, market lane, dead end and connector inside the agreed urban boundary.  
+**Initial playable scope:** A compact, GTA-style Sialkot-inspired city map focused on Clock Tower / Saddar Bazaar, Cantonment side and the corridor towards Mehrajke. Compress distances and simplify/rearrange streets where useful for gameplay; villages and distant outer areas are excluded. This is not a 1:1 recreation.  
 **Remaining:** Define the urban playable boundary precisely, measure layer coverage, validate roads and crossings, add connected tile streaming, LOD, collision strategy and on-device inspection.
 
 ### Phase 4 — landmarks, districts and shopfronts
