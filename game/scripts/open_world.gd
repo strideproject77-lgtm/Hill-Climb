@@ -176,7 +176,7 @@ func _build_road() -> void:
 		uvs.append(Vector2(1.0, float(i) * 0.8))
 	for i in range(ROAD_SEGMENTS):
 		var a := i * 2
-		indices.append_array(PackedInt32Array([a, a + 2, a + 1, a + 1, a + 2, a + 3]))
+		indices.append_array(PackedInt32Array([a, a + 1, a + 2, a + 1, a + 3, a + 2]))
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
