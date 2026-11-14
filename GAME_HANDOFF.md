@@ -1,8 +1,10 @@
-# Stride Open World — Development Handoff
+# INFINITE HORIZONS — Development Handoff
 
 Updated: 2026-11-14
 
 ## Project
+- Official game title: **INFINITE HORIZONS**
+- Master handover: `docs/INFINITE_HORIZONS_HANDOFF.md` (mission, complete vision, quality standards, architecture and roadmap)
 - Repository: https://github.com/strideproject77-lgtm/Hill-Climb
 - Active branch: `hill-climb-game`
 - Engine: Godot 4.4.1
