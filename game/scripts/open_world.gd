@@ -31,6 +31,7 @@ func _process(delta: float) -> void:
 	if is_instance_valid(vehicle):
 		_update_camera(delta)
 		speed_label.text = "%03d km/h" % int(vehicle.speed_kmh)
+		follow_camera.fov = lerpf(68.0, 76.0, clampf(vehicle.speed_kmh / 150.0, 0.0, 1.0))
 
 func _setup_noise() -> void:
 	terrain_noise.seed = 48127
