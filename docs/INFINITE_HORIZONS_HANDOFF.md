@@ -96,11 +96,11 @@ Do not claim that a feature is complete merely because a script, placeholder, mo
 ## 5. World design — Sialkot
 
 ### Geographic accuracy
-The target is the real Sialkot municipal city area. Use source geometry and documented references for roads, intersections, buildings, railway corridors, waterways, land use and points of interest.
+The long-term geographic target is the real Sialkot municipal city area. **The initial playable-world scope is narrower: main/urban Sialkot only, not the surrounding villages or distant outer areas.** The first coverage focus is the Clock Tower / Saddar Bazaar area, the Cantonment side, and the main-city corridor/connected streets in the direction of Mehrajke. Use source geometry and documented references for roads, intersections, buildings, railway corridors, waterways, land use and points of interest.
 
 OpenStreetMap is the initial geospatial source. Preserve required attribution and comply with its ODbL obligations. Keep source IDs, tags, retrieval date, coverage bounds and layer counts so data can be audited and refreshed.
 
-The current imported area is only a **bounded central-city pilot**. It is not a verified municipal boundary and must not be described as the complete city.
+The current imported area is only a **bounded central-city pilot**. It is not a verified municipal boundary and must not be described as the complete city. For the first playable map, define and document an urban-Sialkot coverage boundary that includes the Clock Tower / Saddar Bazaar, Cantonment-side city streets and the connected main-city corridor towards Mehrajke, while excluding villages and distant outer settlements from the initial playable scope. This is a staged scope decision, not permission to omit small streets inside the chosen boundary.
 
 ### Important roads and corridors
 Use actual source geometry and validate the named corridors, including:
@@ -304,7 +304,7 @@ These are estimates, not test results. Recalculate only when implementation and 
 
 ### Immediate unfinished work
 1. Inspect the latest branch and recent GitHub Actions runs before editing.
-2. Complete Phase 3 data coverage validation and determine the actual municipal boundary.
+2. Complete Phase 3 data coverage validation and define the initial urban playable boundary (Clock Tower / Saddar Bazaar, Cantonment side and the connected corridor towards Mehrajke); villages and distant outer areas are deferred.
 3. Add streamed map tiles, LOD and safe building collision.
 4. Render mapped POIs and begin high-quality landmark/shopfront production.
 5. Improve the visual identity and gameplay HUD in parallel with world work.
@@ -326,7 +326,8 @@ Phases are ordered by dependency, not by a rule that visuals must wait until the
 
 ### Phase 3 — Sialkot geospatial base map
 **Status:** Pilot pipeline implemented; phase incomplete.  
-**Remaining:** Confirm municipal boundary, measure layer coverage, validate roads and crossings, add connected tile streaming, LOD, collision strategy and on-device inspection.
+**Initial playable scope:** Main urban Sialkot only — Clock Tower / Saddar Bazaar, Cantonment side and connected main-city streets towards Mehrajke. Exclude villages and distant outer areas for this first stage. Include every mapped minor street, residential gali, market lane, dead end and connector inside the agreed urban boundary.  
+**Remaining:** Define the urban playable boundary precisely, measure layer coverage, validate roads and crossings, add connected tile streaming, LOD, collision strategy and on-device inspection.
 
 ### Phase 4 — landmarks, districts and shopfronts
 Build signature Sialkot landmarks, commercial streets, market blocks, varied local storefronts and selected interiors. Add location discovery UI and map POI presentation.
