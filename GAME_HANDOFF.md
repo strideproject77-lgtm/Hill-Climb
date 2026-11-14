@@ -31,8 +31,9 @@ Track the vertical playable slice separately from total planned content. Count o
 1. **3D World Foundation — Source implemented; APK workflow #47 passed; device inspection pending**
 2. **Vehicle & Driving Foundation — Source implemented; Android workflow #51 passed; device inspection pending**
    - Four-wheel VehicleBody, front steering/rear traction, suspension, throttle, brake, keyboard controls, generated sedan exterior, chase camera, mobile touch HUD, terrain and road collision.
-3. **Sialkot Geospatial Base Map — Pilot pipeline implemented; full municipal coverage pending**
-   - Municipal boundary, full road graph, building footprints, waterways, railway and POIs imported from OSM with attribution and source metadata.
+3. **Sialkot Geospatial Base Map — Pilot pipeline implemented; initial urban coverage pending**
+   - First playable scope: main urban Sialkot around Clock Tower / Saddar Bazaar, Cantonment side and connected main-city streets towards Mehrajke; villages and distant outer areas deferred.
+   - Inside the selected boundary, include all mapped roads and the smallest galiyan, market lanes, service roads, dead ends and connectors — not just main roads.
 4. **Sialkot Landmarks & Shopfronts — Planned**
    - Iqbal Manzil, Clock Tower/Saddar Bazaar, Holy Trinity Cathedral, Murray College, mapped markets and public businesses; varied ordinary shopfronts.
 5. **City Streaming & Performance — Planned**
@@ -58,8 +59,9 @@ Track the vertical playable slice separately from total planned content. Count o
 - Added batched runtime geometry for mapped roads, building footprints with basic height extrusion, railways and waterways.
 - Added an in-game SIALKOT / OPENSTREETMAP PILOT label; the old procedural test landscape remains only as a fallback when map data is unavailable.
 - Extra improvements: data refresh during APK builds, source metadata for later corrections, merged geometry to reduce scene-node overhead, and bounded feature counts for mobile memory.
-- Limitation: this is a central-city pilot rectangle, not a verified municipal boundary or complete 1:1 Sialkot map. POIs are preserved in the data but bespoke storefronts are not implemented yet.
-- Remaining: one consolidated Godot + APK validation; verify Overpass coverage and municipal boundary; add streaming/LOD and building collision; inspect on a real device. Phase 3 is not complete.
+- Limitation: this is a central-city pilot rectangle, not a verified urban playable boundary or complete 1:1 Sialkot map. POIs are preserved in the data but bespoke storefronts are not implemented yet.
+- New scope decision: the first playable map covers main urban Sialkot only — Clock Tower / Saddar Bazaar, Cantonment side and connected main-city streets towards Mehrajke. Villages and distant outer areas are deferred. Tiny streets and galiyan remain mandatory inside the selected boundary.
+- Remaining: define the precise urban playable polygon; one consolidated Godot + APK validation; verify Overpass coverage for every street class inside the boundary; add streaming/LOD and building collision; inspect on a real device. Phase 3 is not complete.
 
 ## Progress entry — 2026-11-14
 ### Phase 1 — 3D World Foundation
