@@ -27,7 +27,7 @@ Track the vertical playable slice separately from total planned content. Count o
 
 ## Phase roadmap
 1. **3D World Foundation — Source implemented; APK workflow #47 passed; device inspection pending**
-2. **Vehicle & Driving Foundation — Source implemented; validation pending**
+2. **Vehicle & Driving Foundation — Source implemented; Android workflow #51 passed; device inspection pending**
    - Four-wheel VehicleBody, front steering/rear traction, suspension, throttle, brake, keyboard controls, generated sedan exterior, chase camera, mobile touch HUD, terrain and road collision.
 3. **Sialkot Geospatial Base Map — Pilot pipeline implemented; full municipal coverage pending**
    - Municipal boundary, full road graph, building footprints, waterways, railway and POIs imported from OSM with attribution and source metadata.
@@ -67,14 +67,15 @@ Track the vertical playable slice separately from total planned content. Count o
 - GitHub Actions run #47 passed on commit 67841104dc9d55b11bf87385eec3c2bb0c1a0e52.
 - Physical device visual inspection remains pending.
 
-### Phase 2 — Vehicle & Driving Foundation — Source implemented; validation pending
+### Phase 2 — Vehicle & Driving Foundation — Source implemented; Android workflow #51 passed; device inspection pending
 - Added a four-wheel VehicleBody3D vehicle with front steering and rear-wheel traction.
 - Added suspension tuning (with wheel spring/damping/grip values set from Godot's documented ranges), throttle, braking, steering response and keyboard driving.
 - Built an original multi-section sedan silhouette with metallic paint, panoramic cabin glazing, roof, grille, lamps, bumpers, mirrors and alloy/rubber wheel assemblies.
 - Added smoothed chase camera and mobile touch buttons for steering, brake and accelerator.
 - Added speed HUD and static collision for terrain and road.
 - Extra improvements: touch-first driving controls, camera smoothing and collision surfaces so the vehicle is not merely a visual prop.
-- Remaining: consolidated Godot parse/startup and Android ARM64 export; validate wheel contact, steering, braking, touch controls and performance on device; tune after actual results.
+- Consolidated Godot startup/script-parse and Android ARM64 export passed in workflow #51 (commit 6bc12c11f8e9d2f7dc3748c4dbab244f549ba7e1).
+- Remaining: inspect wheel contact, steering, braking, touch controls and performance on a physical device; tune after actual results.
 - Tests deferred to consolidated validation.
 
 ### Sialkot map — Research and data plan created; not imported yet

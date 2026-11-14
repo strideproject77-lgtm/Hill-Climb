@@ -2,13 +2,6 @@
 
 Updated: 2026-11-14
 
-## Phase 3 pilot implementation
-- The Android workflow downloads a bounded central-Sialkot OpenStreetMap extract from public Overpass mirrors at build time.
-- The importer converts WGS84 to local East/North metres and retains OSM IDs, tags, names, retrieval time, coverage bounds, source URL, ODbL notice and feature counts.
-- The game batches the pilot road graph, building footprint extrusions, railway lines and waterways into combined runtime meshes.
-- The current rectangle is a central-city pilot subset, not the verified Sialkot Municipal Corporation boundary. It must not be described as the complete 1:1 city.
-- Remaining: verify boundary/coverage, render named POIs and shops, add tile streaming/LOD and building collision, and inspect on device.
-
 ## Accuracy policy
 The target is the real Sialkot municipal city area, not a fictional road grid with a Sialkot label. Road geometry, intersections, rail corridors, building footprints, waterways, land use and named places must come from geospatial source data. Do not claim 1:1 coverage until imported geometry is compared with its source and inspected in-game.
 

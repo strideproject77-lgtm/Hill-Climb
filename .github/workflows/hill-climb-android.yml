@@ -41,8 +41,6 @@ jobs:
           test -d "$ANDROID_HOME/platforms/android-35"
           test -x "$ANDROID_HOME/build-tools/35.0.0/aapt"
           "$SDKMANAGER" --list_installed
-      - name: Fetch and convert Sialkot OpenStreetMap pilot data
-        run: python3 game/tools/fetch_sialkot_osm.py
       - name: Validate project import
         run: godot --headless --editor --path game --quit
       - name: Install export templates and configure Android signing
