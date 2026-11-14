@@ -1,8 +1,8 @@
 extends VehicleBody3D
 class_name StrideVehicle
 
-const ENGINE_POWER := 1850.0
-const BRAKE_POWER := 72.0
+const ENGINE_POWER := 68.0
+const BRAKE_POWER := 42.0
 const MAX_STEER := 0.48
 const STEER_RESPONSE := 2.8
 
@@ -10,6 +10,7 @@ var throttle_input := 0.0
 var brake_input := 0.0
 var steer_input := 0.0
 var speed_kmh := 0.0
+var model_root: Node3D
 
 func _ready() -> void:
 	mass = 1420.0
@@ -18,11 +19,15 @@ func _ready() -> void:
 	continuous_cd = true
 	can_sleep = false
 	_add_chassis_collision()
+	model_root = Node3D.new()
+	model_root.name = "VehicleVisuals"
+	model_root.rotation.y = PI
+	add_child(model_root)
 	_build_vehicle_model()
-	_add_wheel(Vector3(-0.91, -0.43, -1.34), true, false, "FrontLeft")
-	_add_wheel(Vector3(0.91, -0.43, -1.34), true, false, "FrontRight")
-	_add_wheel(Vector3(-0.91, -0.43, 1.34), false, true, "RearLeft")
-	_add_wheel(Vector3(0.91, -0.43, 1.34), false, true, "RearRight")
+	_add_wheel(Vector3(-0.91, -0.43, 1.34), true, false, "FrontLeft")
+	_add_wheel(Vector3(0.91, -0.43, 1.34), true, false, "FrontRight")
+	_add_wheel(Vector3(-0.91, -0.43, -1.34), false, true, "RearLeft")
+	_add_wheel(Vector3(0.91, -0.43, -1.34), false, true, "RearRight")
 
 func _physics_process(delta: float) -> void:
 	var gas_key := Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)
@@ -119,7 +124,7 @@ func _add_hull(stations: Array, material: Material, node_name: String) -> void:
 	instance.name = node_name
 	instance.mesh = surface.commit()
 	instance.material_override = material
-	add_child(instance)
+	model_root.add_child(instance)
 
 func _quad(surface: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
 	surface.add_vertex(a)
@@ -137,7 +142,7 @@ func _add_box(node_name: String, dimensions: Vector3, at: Vector3, material: Mat
 	instance.mesh = mesh
 	instance.position = at
 	instance.material_override = material
-	add_child(instance)
+	model_root.add_child(instance)
 
 func _add_wheel(at: Vector3, steering_wheel: bool, traction_wheel: bool, wheel_name: String) -> void:
 	var wheel := VehicleWheel3D.new()
@@ -149,10 +154,11 @@ func _add_wheel(at: Vector3, steering_wheel: bool, traction_wheel: bool, wheel_n
 	wheel.wheel_rest_length = 0.19
 	wheel.suspension_travel = 0.22
 	wheel.suspension_stiffness = 31.0
-	wheel.damping_compression = 4.5
-	wheel.damping_relaxation = 5.4
-	wheel.wheel_friction_slip = 3.8
-	wheel.wheel_roll_influence = 0.08
+	wheel.damping_compression = 0.42
+	wheel.damping_relaxation = 0.52
+	wheel.wheel_friction_slip = 2.0
+	wheel.wheel_roll_influence = 0.12
+	wheel.suspension_max_force = 6000.0
 	add_child(wheel)
 	var tire := MeshInstance3D.new()
 	var tire_mesh := CylinderMesh.new()

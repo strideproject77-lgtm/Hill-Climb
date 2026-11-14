@@ -273,6 +273,7 @@ func _spawn_vehicle() -> void:
 	vehicle = StrideVehicle.new()
 	vehicle.name = "PlayerSedan"
 	vehicle.position = Vector3(0.0,_height_at(0.0,_road_center(0.0))+2.2,_road_center(0.0))
+	vehicle.rotation.y = PI * 0.5
 	add_child(vehicle)
 
 func _setup_camera() -> void:
@@ -286,7 +287,7 @@ func _setup_camera() -> void:
 	follow_camera.look_at(vehicle.global_position+Vector3.UP,Vector3.UP)
 
 func _update_camera(delta: float) -> void:
-	var behind := vehicle.global_transform.basis.z.normalized()
+	var behind := -vehicle.global_transform.basis.z.normalized()
 	var target := vehicle.global_position+behind*8.8+Vector3.UP*4.2
 	follow_camera.global_position=follow_camera.global_position.lerp(target,1.0-exp(-delta*4.2))
 	follow_camera.look_at(vehicle.global_position+Vector3.UP*1.05+vehicle.linear_velocity*0.08,Vector3.UP)

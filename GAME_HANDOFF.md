@@ -58,7 +58,7 @@ Track the vertical playable slice separately from total planned content. Count o
 
 ### Phase 2 — Vehicle & Driving Foundation — Source implemented; validation pending
 - Added a four-wheel VehicleBody3D vehicle with front steering and rear-wheel traction.
-- Added suspension tuning, throttle, braking, steering response and keyboard driving.
+- Added suspension tuning (with wheel spring/damping/grip values set from Godot's documented ranges), throttle, braking, steering response and keyboard driving.
 - Built an original multi-section sedan silhouette with metallic paint, panoramic cabin glazing, roof, grille, lamps, bumpers, mirrors and alloy/rubber wheel assemblies.
 - Added smoothed chase camera and mobile touch buttons for steering, brake and accelerator.
 - Added speed HUD and static collision for terrain and road.
@@ -70,4 +70,4 @@ Track the vertical playable slice separately from total planned content. Count o
 - Added docs/SIALKOT_MAP_PLAN.md with GIS accuracy policy, data source/attribution, major roads, landmarks and streaming requirements.
 - Official references identify key radial roads and heritage landmarks.
 - Remaining: acquire/import the municipal OSM geometry, verify city boundary and coverage, then build landmarks and shopfronts from public references.
-- The current terrain test area is not Sialkot and must not be described as a 1:1 city map.
+- The current terrain test area is not Sialkot and must not be described as a 1:1 city map. Godot's built-in VehicleBody3D is a first drivable baseline; its documented limitations mean a custom suspension/tyre solver may be needed for higher-fidelity handling.
