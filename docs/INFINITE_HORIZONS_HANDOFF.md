@@ -325,9 +325,10 @@ Phases are ordered by dependency, not by a rule that visuals must wait until the
 **Remaining:** Validate wheel contact, steering, braking, camera, touch response and handling on a physical device. Expand to data-driven vehicle classes after the base is stable.
 
 ### Phase 3 — Sialkot geospatial base map
-**Status:** Pilot pipeline implemented; phase incomplete.  
+**Status:** Compact Sialkot-inspired city blockout source added; phase incomplete and validation pending.  
 **Initial playable scope:** A compact, GTA-style Sialkot-inspired city map focused on Clock Tower / Saddar Bazaar, Cantonment side and the corridor towards Mehrajke. Compress distances and simplify/rearrange streets where useful for gameplay; villages and distant outer areas are excluded. This is not a 1:1 recreation.  
-**Remaining:** Define the urban playable boundary precisely, measure layer coverage, validate roads and crossings, add connected tile streaming, LOD, collision strategy and on-device inspection.
+**Implemented in current batch:** Added a compact city layout generator with a Clock Tower/Saddar-style central plaza and tower silhouette, dense bazaar street grid, Cantonment-style planned grid and gate, Mehrajke-direction arterial, ring connectors, low-rise building blocks, street furniture and wayfinding labels. Replaced the mountainous driving test landscape startup with this urban blockout and moved the player spawn onto the city street network. HUD now identifies the Sialkot city slice.
+**Remaining:** Consolidated Godot parse/startup and Android APK validation; refine road/building spacing after visual inspection; add robust building/road collision, proper district landmarks and shopfronts, map UI/minimap, streaming/LOD and mobile performance validation.
 
 ### Phase 4 — landmarks, districts and shopfronts
 Build signature Sialkot landmarks, commercial streets, market blocks, varied local storefronts and selected interiors. Add location discovery UI and map POI presentation.
