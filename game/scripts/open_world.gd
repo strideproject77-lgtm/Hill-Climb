@@ -1,6 +1,7 @@
 extends Node3D
 
 ## Drivable 3D vehicle test slice. Sialkot GIS map is a separate data-driven phase.
+const CityLayout = preload("res://scripts/sialkot_city.gd")
 const WORLD_EXTENT := 1500.0
 const TERRAIN_CELLS := 112
 const TREE_COUNT := 190
@@ -10,19 +11,17 @@ const ROAD_WIDTH := 12.0
 var terrain_noise := FastNoiseLite.new()
 var detail_noise := FastNoiseLite.new()
 var foliage_rng := RandomNumberGenerator.new()
+var city_layout: Node3D
 var vehicle: StrideVehicle
 var follow_camera: Camera3D
 var speed_label: Label
 var control_buttons: Dictionary = {}
 
 func _ready() -> void:
-	_setup_noise()
 	_setup_environment()
-	_build_terrain()
-	_build_road()
-	_build_road_markings()
-	_build_vegetation()
-	_build_distant_ridge()
+	city_layout = CityLayout.new()
+	city_layout.name = "SialkotCompactCity"
+	add_child(city_layout)
 	_spawn_vehicle()
 	_setup_camera()
 	_setup_mobile_hud()
@@ -46,11 +45,9 @@ func _setup_noise() -> void:
 	detail_noise.fractal_octaves = 3
 	foliage_rng.seed = 741903
 
-func _height_at(x: float, z: float) -> float:
-	var broad := terrain_noise.get_noise_2d(x,z)*74.0
-	var detail := detail_noise.get_noise_2d(x,z)*8.0
-	var ridge := 1.0-absf(terrain_noise.get_noise_2d(x*0.42+600.0,z*0.42-900.0))
-	return broad+detail+pow(maxf(0.0,ridge),3.0)*28.0
+func _height_at(_x: float, _z: float) -> float:
+	# The first Sialkot slice is an urban layout, so keep the road plane level.
+	return 0.0
 
 func _setup_environment() -> void:
 	var world_env := WorldEnvironment.new()
@@ -273,8 +270,8 @@ func _build_distant_ridge() -> void:
 func _spawn_vehicle() -> void:
 	vehicle = StrideVehicle.new()
 	vehicle.name = "PlayerSedan"
-	vehicle.position = Vector3(0.0,_height_at(0.0,_road_center(0.0))+2.2,_road_center(0.0))
-	vehicle.rotation.y = PI * 0.5
+	vehicle.position = Vector3(0.0,1.15,-78.0)
+	vehicle.rotation.y = 0.0
 	add_child(vehicle)
 
 func _setup_camera() -> void:
@@ -308,7 +305,7 @@ func _setup_mobile_hud() -> void:
 	root.add_child(speed_label)
 	var location := Label.new()
 	location.position=Vector2(26,57)
-	location.text="FREE DRIVE  •  PHYSICS TEST AREA"
+	location.text="INFINITE HORIZONS  •  SIALKOT CITY DISTRICT"
 	location.add_theme_font_size_override("font_size",12)
 	location.add_theme_color_override("font_color",Color("#d3c4a4"))
 	root.add_child(location)
