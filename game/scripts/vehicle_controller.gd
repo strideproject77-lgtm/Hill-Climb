@@ -120,6 +120,7 @@ func _add_hull(stations: Array, material: Material, node_name: String) -> void:
 		_quad(surface,ar,atr,btr,br)
 		_quad(surface,atl,btl,btr,atr)
 		_quad(surface,al,ar,br,bl)
+	surface.generate_normals()
 	var instance := MeshInstance3D.new()
 	instance.name = node_name
 	instance.mesh = surface.commit()
