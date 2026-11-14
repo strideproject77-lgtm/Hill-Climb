@@ -1,12 +1,12 @@
-; Stride Open World Android game configuration
+; INFINITE HORIZONS Android game configuration
 config_version=5
 
 [application]
-config/name="Stride Open World"
+config/name="INFINITE HORIZONS"
 config/icon="res://assets/stride_icon.svg"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
-config/description="A realistic 3D open-world driving and action game."
+config/description="A realistic Sialkot open-world life, exploration, driving and action adventure."
 
 [display]
 window/size/viewport_width=1280
