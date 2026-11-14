@@ -1,26 +1,28 @@
-# Ridgeline: Offroad Championship
+# Stride Open World
 
-An original 2D off-road driving game built with Godot 4.4 for Android ARM64.
+An original 3D open-world driving/action game for Android ARM64, built with Godot 4.4.1.
 
-## Current systems
+## Direction
 
-- Suspension-based two-wheel vehicle simulation with spring response, traction, braking, weight transfer and airborne lean
-- Four selectable vehicle classes with different mass, engine power, grip and suspension profiles
-- Garage with unlockable vehicles and persistent career progress
-- Four upgrade tracks: engine, suspension, tires and fuel capacity
-- Three procedural environments: Green Highlands, Desert Dunes and Frost Ridge, each with its own terrain profile and surface grip
-- Fuel consumption, collectible fuel cans, coins, distance rewards and saved best distance
-- Touch controls designed for landscape mobile play
-- Reproducible Android ARM64 APK workflow
+The project is moving from its previous 2D off-road game into a third-person, realistic 3D open-world experience. The visual and gameplay target is commercial open-world quality: detailed environments, believable vehicles, character animation, traffic, pedestrians, missions, weather, and a polished mobile interface.
+
+This is an original game inspired by the broad genre and production values of modern open-world games. It does not reuse GTA assets, maps, characters, branding, or proprietary content.
+
+## Current implementation
+
+- Phase 1: 3D rendering and procedural world foundation.
+- Procedural rolling terrain with layered noise.
+- Procedural asphalt road with curvature and center markings.
+- Procedural vegetation and distant ridge silhouettes.
+- Filmic sky, late-afternoon directional lighting, and mobile-compatible rendering.
+- Android ARM64 APK export remains automated through GitHub Actions.
 
 ## Build
 
-Open this folder in Godot 4.4. Install the matching Android export templates and configure the Android SDK/JDK in Editor Settings. Then export using the **Android** preset.
+The GitHub Actions workflow in `.github/workflows/hill-climb-android.yml` imports the Godot project, runs a headless startup/parse smoke test, exports an Android ARM64 APK, validates the archive and native ABI, and uploads the APK as a workflow artifact.
 
-GitHub Actions builds and validates the Android ARM64 APK. The artifact is a development build and still requires hands-on gameplay testing on a physical device.
+No local PC build is required for the normal development workflow. Download the APK artifact from the completed GitHub Actions run.
 
-## Husk JIT-less readiness
+## Honest status
 
-The Android export targets **ARM64 only** and uses Godot 4 GDScript (not a runtime JIT or a C#/.NET build). The APK workflow checks that every packaged native shared library is an ELF64 AArch64 library and rejects other native ABI directories.
-
-These checks establish a JIT-less-friendly package profile; they do **not** prove Husk can convert or launch this build. Husk performs its own first-launch library conversion and signing, which must be tested on-device with the matching sideloading certificate. Actual JIT-less launch and gameplay remain a separate compatibility test.
+The current phase establishes the 3D world foundation. It is not yet a complete open-world game: player controller, drivable vehicle physics, camera follow, world streaming, districts, NPCs, missions, and final art assets are subsequent implementation phases. No compatibility or visual-quality claim should be made without a real APK/device review.
