@@ -3,15 +3,15 @@
 Updated: 2026-11-14
 
 ## Accuracy policy
-The long-term target is the real Sialkot municipal city area, not a fictional road grid with a Sialkot label. The **first playable map stage is main urban Sialkot only**; villages and distant outer settlements are explicitly deferred. Initial focus: Clock Tower / Saddar Bazaar, Cantonment-side streets, and the connected main-city corridor towards Mehrajke. Road geometry, intersections, rail corridors, building footprints, waterways, land use and named places must come from geospatial source data. Do not claim 1:1 coverage until imported geometry is compared with its source and inspected in-game.
+The long-term inspiration is real Sialkot, but the first playable map follows a **GTA-style adaptation rule**: recognizable local anchors and city character, not strict 1:1 geography. Initial focus: Clock Tower / Saddar Bazaar, Cantonment side and a connected corridor towards Mehrajke. Compress distances, simplify blocks and adjust street connections where gameplay benefits. Villages and distant outer areas are excluded for now.
 
-## Initial playable boundary and street completeness
-- Establish a documented urban coverage polygon around the agreed main-city scope before requesting/importing the final extract.
-- Include the Clock Tower / Saddar Bazaar core, Cantonment side and connected city streets along the Mehrajke direction.
-- Exclude villages and distant outer areas from this first playable stage; they may be considered as later world expansion.
-- Inside the selected boundary, include main roads, neighbourhood streets, the smallest mapped residential galiyan, inner-market lanes, service roads, dead ends and connectors.
-- Do not filter streets solely because they are narrow, low-class or unimportant to through traffic.
-- Preserve road-node topology, intersections and tile-edge connectivity; report missing or uncertain coverage rather than silently dropping it.
+## Initial playable layout rules
+- Build a compact Sialkot-inspired city layout anchored by Clock Tower / Saddar Bazaar, Cantonment side and the Mehrajke-direction corridor.
+- Use real maps/references as inspiration for the street hierarchy, landmarks and local character, but allow deliberate gameplay-driven compression, simplification and repositioning.
+- Do not label the result as a 1:1 map or exact GIS recreation.
+- Keep enough secondary streets and lanes to make navigation feel like a believable city; prioritize playability and readable route choices over exhaustive street-by-street reproduction.
+- Exclude villages and distant outer areas from the initial playable world; consider expansion later.
+- Maintain internal road connectivity and clear navigation loops even when the layout is adapted.
 
 ## Primary map data
 - OpenStreetMap is the preferred initial source for routable road geometry, building footprints and points of interest.
@@ -63,7 +63,7 @@ Other mapped POIs will be included from the source data. Hero buildings should b
 - Keep map data independent of rendering scenes so it can be refreshed without changing driving code.
 
 ## Validation gates
-1. Confirm and document the initial urban playable boundary; distinguish it from the wider municipal/district boundary.
+1. Define and document the compact playable layout and its real-world anchor references; clearly distinguish it from a 1:1 municipal map.
 2. Compare roads at city, neighbourhood and street zoom levels.
 3. Check named radial roads and rail crossings.
 4. Check landmark coordinates and building footprints.
