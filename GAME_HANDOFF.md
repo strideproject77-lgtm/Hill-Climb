@@ -31,7 +31,7 @@ Track the vertical playable slice separately from total planned content. Count o
 1. **3D World Foundation — Source implemented; APK workflow #47 passed; device inspection pending**
 2. **Vehicle & Driving Foundation — Source implemented; Android workflow #51 passed; device inspection pending**
    - Four-wheel VehicleBody, front steering/rear traction, suspension, throttle, brake, keyboard controls, generated sedan exterior, chase camera, mobile touch HUD, terrain and road collision.
-3. **Sialkot Geospatial Base Map — Pilot pipeline implemented; initial urban coverage pending**
+3. **Sialkot Geospatial Base Map — Compact city blockout implemented; validation pending**
    - First playable scope: a compact GTA-style Sialkot-inspired layout anchored by Clock Tower / Saddar Bazaar, Cantonment side and the Mehrajke-direction corridor. Distances may be compressed and streets simplified/repositioned for gameplay; villages and distant outer areas deferred.
 4. **Sialkot Landmarks & Shopfronts — Planned**
    - Iqbal Manzil, Clock Tower/Saddar Bazaar, Holy Trinity Cathedral, Murray College, mapped markets and public businesses; varied ordinary shopfronts.
@@ -49,6 +49,16 @@ Track the vertical playable slice separately from total planned content. Count o
    - Main menu, pause, map, minimap, mission HUD, settings, garage and touch layouts.
 11. **Optimization & Release Readiness — Planned**
    - LOD, occlusion, memory, compression, frame pacing, APK size and device profiling.
+
+## Progress entry — 2026-11-14
+
+### Phase 3 — Compact Sialkot-inspired city blockout — Source added; validation pending
+- Added `game/scripts/sialkot_city.gd` with a central Clock Tower/Saddar-style plaza and tower silhouette, narrow bazaar street grid, Cantonment-style grid and gate, Mehrajke-direction arterial, ring connectors, building blocks, street lights, trees and wayfinding labels.
+- Replaced the mountainous test landscape startup in `game/scripts/open_world.gd` with the new compact urban layout and moved the player vehicle spawn onto the city road network.
+- Updated the HUD location text to identify the Sialkot city slice.
+- Extra improvements: recognizable district wayfinding, different street hierarchy between bazaar and Cantonment, and a ring connector to make free-roam navigation more interesting.
+- Design rule: GTA-style adaptation, not 1:1 recreation. Distances and street layouts may be compressed/simplified; Clock Tower/Saddar, Cantonment and the Mehrajke-direction corridor are the first anchors. Villages and distant outer areas are deferred.
+- Remaining: one consolidated Godot + Android APK validation; inspect visual layout; add building collision and improve roads/buildings, map UI, shopfronts, streaming/LOD and performance. Phase 3 remains incomplete.
 
 ## Progress entry — 2026-11-14
 
