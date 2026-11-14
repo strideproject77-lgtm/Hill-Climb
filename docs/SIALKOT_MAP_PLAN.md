@@ -62,6 +62,12 @@ Other mapped POIs will be included from the source data. Hero buildings should b
 - Split the city into streamed tiles while preserving road-node connectivity across tile edges.
 - Keep map data independent of rendering scenes so it can be refreshed without changing driving code.
 
+## Current implementation — first city blockout
+- Added `game/scripts/sialkot_city.gd` as a procedural compact-city layout generator.
+- Current source layout includes a central Clock Tower/Saddar-style plaza, dense narrow bazaar lanes, a more open Cantonment-style grid and gate, a Mehrajke-direction arterial, ring connectors, building blocks, street lights, trees and wayfinding labels.
+- `game/scripts/open_world.gd` now starts this city layout instead of the mountainous terrain test scene; the vehicle spawn is placed on the city street network.
+- This is an early gameplay blockout, not a finished or geographically exact map. Road/building collisions, visual tuning, district detail, map UI and performance validation remain.
+
 ## Validation gates
 1. Define and document the compact playable layout and its real-world anchor references; clearly distinguish it from a 1:1 municipal map.
 2. Compare roads at city, neighbourhood and street zoom levels.
