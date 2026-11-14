@@ -3,7 +3,15 @@
 Updated: 2026-11-14
 
 ## Accuracy policy
-The target is the real Sialkot municipal city area, not a fictional road grid with a Sialkot label. Road geometry, intersections, rail corridors, building footprints, waterways, land use and named places must come from geospatial source data. Do not claim 1:1 coverage until imported geometry is compared with its source and inspected in-game.
+The long-term target is the real Sialkot municipal city area, not a fictional road grid with a Sialkot label. The **first playable map stage is main urban Sialkot only**; villages and distant outer settlements are explicitly deferred. Initial focus: Clock Tower / Saddar Bazaar, Cantonment-side streets, and the connected main-city corridor towards Mehrajke. Road geometry, intersections, rail corridors, building footprints, waterways, land use and named places must come from geospatial source data. Do not claim 1:1 coverage until imported geometry is compared with its source and inspected in-game.
+
+## Initial playable boundary and street completeness
+- Establish a documented urban coverage polygon around the agreed main-city scope before requesting/importing the final extract.
+- Include the Clock Tower / Saddar Bazaar core, Cantonment side and connected city streets along the Mehrajke direction.
+- Exclude villages and distant outer areas from this first playable stage; they may be considered as later world expansion.
+- Inside the selected boundary, include main roads, neighbourhood streets, the smallest mapped residential galiyan, inner-market lanes, service roads, dead ends and connectors.
+- Do not filter streets solely because they are narrow, low-class or unimportant to through traffic.
+- Preserve road-node topology, intersections and tile-edge connectivity; report missing or uncertain coverage rather than silently dropping it.
 
 ## Primary map data
 - OpenStreetMap is the preferred initial source for routable road geometry, building footprints and points of interest.
@@ -55,7 +63,7 @@ Other mapped POIs will be included from the source data. Hero buildings should b
 - Keep map data independent of rendering scenes so it can be refreshed without changing driving code.
 
 ## Validation gates
-1. Confirm the municipal boundary and source coverage.
+1. Confirm and document the initial urban playable boundary; distinguish it from the wider municipal/district boundary.
 2. Compare roads at city, neighbourhood and street zoom levels.
 3. Check named radial roads and rail crossings.
 4. Check landmark coordinates and building footprints.
