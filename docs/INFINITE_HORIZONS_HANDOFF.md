@@ -258,6 +258,18 @@ Do not build, sign or export an IPA. This project deliverable is an Android APK 
 
 ---
 
+## Cross-platform build foundation (2026-11-15)
+
+**Status: Source/workflow prepared; iOS signing and export not executed.**
+
+- Kept one shared Godot project and the existing Android ARM64 APK workflow.
+- Added an iOS export preset in `game/export_presets.cfg`.
+- Added `.github/workflows/infinite-horizons-ios.yml` using a GitHub-hosted macOS runner. It is manual-only and its `authorize_ipa_export` input defaults to false; a run without explicit authorization performs no signing or export.
+- The authorized path requires repository Actions secrets: `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISION_PROFILE_BASE64`, `IOS_TEAM_ID`. Team ID and provisioning-profile UUID are injected at runtime.
+- Added `game/scripts/platform_profile.gd` as a shared platform-capability helper (iOS/Android/mobile/touch/quality profile) and `game/CROSS_PLATFORM_BUILDS.md` with setup notes.
+- No IPA build, signing, export, or upload has been run in this batch. No Apple signing credentials were supplied or accessed.
+- Remaining: validate Godot 4.4.1 iOS preset against a real Apple signing profile; integrate the platform profile into the UI/input/settings layer; run one consolidated Android validation and a separately authorized iOS signing/export validation when credentials are configured.
+
 ## 10. Current repository baseline (2026-11-14)
 
 ### Confirmed project configuration
