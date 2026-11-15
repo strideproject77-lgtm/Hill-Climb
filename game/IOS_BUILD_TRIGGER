@@ -13,3 +13,5 @@ Fix macOS codesign availability check; resume unsigned IPA export — 2026-11-15
 Retry unsigned iOS export with captured Godot editor log and codesign stderr — 2026-11-15T16:30:00+05:00
 Unsigned IPA retry after correcting Godot .xcodeproj discovery path — 2026-11-15T13:02+05:00
 Retry artifact upload after fixing run-number expression — 2026-11-15T13:10+05:00
+
+Authorized unsigned iOS IPA build for the latest Hill-Climb branch — BMW-inspired coupe and driver interaction batch — 2026-11-15T16:00:00+05:00
