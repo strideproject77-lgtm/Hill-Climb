@@ -386,8 +386,8 @@ func _build_character() -> void:
 
 
 func _update_foot_grounding(delta: float) -> void:
-	# Ground probes estimate height and surface orientation; this remains lightweight
-	# procedural contact adaptation rather than full planted-foot two-bone IK.
+	# Four short probes approximate the shoe contact plane across heel, toe and edges.
+	# This is still procedural contact adaptation, not planted-foot two-bone IK.
 	var space := get_world_3d().direct_space_state
 	var foot_specs := [
 		{"ankle": left_ankle, "side": -1.0},
@@ -399,19 +399,40 @@ func _update_foot_grounding(delta: float) -> void:
 			continue
 
 		var side: float = spec["side"]
-		var foot_origin := ankle.global_position + Vector3(0.0, 0.42, -0.06)
-		var query := PhysicsRayQueryParameters3D.create(foot_origin, foot_origin + Vector3.DOWN * 0.78)
-		query.exclude = [get_rid()]
-		var hit := space.intersect_ray(query)
+		var foot_center: Vector3 = ankle.global_position + Vector3(0.0, 0.42, -0.06)
+		var probe_offsets: Array[Vector3] = [
+			Vector3(-0.075, 0.0, 0.13),
+			Vector3(0.075, 0.0, 0.13),
+			Vector3(-0.075, 0.0, -0.19),
+			Vector3(0.075, 0.0, -0.19)
+		]
+		var hit_position_sum := Vector3.ZERO
+		var hit_normal_sum := Vector3.ZERO
+		var hit_count := 0
+		for local_offset in probe_offsets:
+			var probe_start: Vector3 = foot_center + global_transform.basis * local_offset
+			var query := PhysicsRayQueryParameters3D.create(probe_start, probe_start + Vector3.DOWN * 0.82)
+			query.exclude = [get_rid()]
+			var hit := space.intersect_ray(query)
+			if hit.is_empty():
+				continue
+			hit_position_sum += hit.position
+			var hit_normal: Vector3 = hit.normal
+			if hit_normal.y < 0.0:
+				hit_normal = -hit_normal
+			hit_normal_sum += hit_normal
+			hit_count += 1
+
 		var target_offset := 0.0
 		var target_pitch := 0.0
 		var target_roll := 0.0
-		if not hit.is_empty() and is_on_floor():
-			var desired_foot_y: float = hit.position.y + 0.075
+		if hit_count >= 2 and is_on_floor():
+			var average_hit_position: Vector3 = hit_position_sum / float(hit_count)
+			var average_normal: Vector3 = (hit_normal_sum / float(hit_count)).normalized()
+			var desired_foot_y: float = average_hit_position.y + 0.075
 			target_offset = clampf(desired_foot_y - (ankle.global_position.y - 0.31 + 0.045), -0.12, 0.12)
-			# Convert the hit normal into character-local space before deriving foot tilt.
-			var local_normal: Vector3 = global_transform.basis.inverse() * hit.normal
-			local_normal = local_normal.normalized()
+			# Average contact normals reduce sudden ankle flips on seams and small props.
+			var local_normal: Vector3 = (global_transform.basis.inverse() * average_normal).normalized()
 			target_pitch = clampf(atan2(local_normal.z, maxf(local_normal.y, 0.01)), -0.18, 0.18)
 			target_roll = clampf(atan2(-local_normal.x, maxf(local_normal.y, 0.01)), -0.16, 0.16)
 		if side < 0.0:
