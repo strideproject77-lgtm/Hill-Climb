@@ -1,12 +1,14 @@
-# Cross-platform build notes
+# Cross-platform builds
 
-INFINITE HORIZONS uses one Godot project and one shared gameplay/source tree for Android and iOS.
+INFINITE HORIZONS uses one shared Godot project and gameplay/source tree for Android and iOS.
 
-- Android: `.github/workflows/hill-climb-android.yml` on Ubuntu; existing ARM64 APK pipeline remains the default.
-- iOS: `.github/workflows/infinite-horizons-ios.yml` on a GitHub-hosted macOS runner; manual dispatch only and explicitly gated.
-- iOS signing assets are supplied only through repository Actions secrets. Never commit certificates, provisioning profiles, passwords or private keys.
-- Required iOS secrets: `IOS_CERTIFICATE_P12_BASE64`, `IOS_CERTIFICATE_PASSWORD`, `IOS_PROVISION_PROFILE_BASE64`, and `IOS_TEAM_ID`.
-- The iOS workflow's authorization input defaults to false. A run without explicit authorization performs no export.
-- Platform capability checks belong in `IHPlatformProfile`; keep gameplay shared and isolate platform-specific settings/input at the edges.
+- Android: `.github/workflows/hill-climb-android.yml` on Ubuntu; the existing ARM64 APK pipeline remains unchanged.
+- iOS: `.github/workflows/infinite-horizons-ios.yml` on a GitHub-hosted macOS runner.
+- The iOS pipeline exports a Godot Xcode project, compiles an ARM64 iPhone app with Xcode code signing disabled, then packages the app as an unsigned IPA.
+- No Apple Developer account, certificate, provisioning profile, or signing secrets are required to produce the unsigned build artifact.
+- The unsigned IPA must still be signed by a compatible sideloading tool (for example, SideStore/AltStore) before installation on a physical iPhone.
+- Manual workflow dispatch is explicitly gated by `authorize_ipa_export=true`; the repository sentinel file can also trigger a build on `hill-climb-game`.
+- Build verification checks the bundle identifier, app executable, ARM64 architecture, IPA ZIP integrity, and SHA-256 digest.
+- Never commit certificates, provisioning profiles, passwords, or private keys.
 
-The iOS workflow is prepared but requires a valid Apple Distribution certificate and matching App Store provisioning profile in the listed secrets. The workflow injects the team ID and profile UUID at runtime; signing materials are never written into the repository. A successful Android build does not prove iOS signing or device compatibility.
+A successful CI export verifies packaging and architecture, not runtime compatibility on every iPhone. Device installation and gameplay still require a separate on-device check.
