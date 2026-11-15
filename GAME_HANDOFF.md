@@ -1,6 +1,6 @@
 # INFINITE HORIZONS — Development Handoff
 
-Updated: 2026-11-14
+Updated: 2026-11-15
 
 ## Project
 - Official game title: **INFINITE HORIZONS**
@@ -8,11 +8,11 @@ Updated: 2026-11-14
 - Repository: https://github.com/strideproject77-lgtm/Hill-Climb
 - Active branch: `hill-climb-game`
 - Engine: Godot 4.4.1
-- Target: Android ARM64 APK via GitHub Actions
+- Targets: Android ARM64 APK (Ubuntu GitHub Actions) + iOS IPA (manual, gated GitHub-hosted macOS Actions workflow)
 - Application ID: `com.strideproject.openworld`
 - APK artifact: `stride-open-world-android-arm64`
 
-## Product direction
+## Cross-platform foundation (2026-11-15)\n- Shared Godot source for Android and iOS; platform helper: `game/scripts/platform_profile.gd`.\n- Android workflow remains `.github/workflows/hill-climb-android.yml`.\n- iOS workflow: `.github/workflows/infinite-horizons-ios.yml`; manual dispatch only, authorization defaults to false.\n- iOS signing requires Actions secrets documented in `game/CROSS_PLATFORM_BUILDS.md`. No IPA was built or exported in this implementation batch.\n- Current status: source and workflow prepared; macOS export/signing validation remains outstanding.\n\n## Product direction
 Create an original, realistic 3D open-world driving/action game set in a faithful Sialkot city map. GTA V is a quality reference only; do not copy proprietary maps, assets, characters, logos, audio or code.
 
 ## Development rules
