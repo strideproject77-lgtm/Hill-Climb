@@ -20,6 +20,11 @@ var right_elbow: Node3D
 var anim_clock := 0.0
 var moving_amount := 0.0
 var grounded_amount := 1.0
+var movement_intent_world := Vector3.ZERO
+var turn_intensity := 0.0
+var locomotion_accel := 0.0
+var previous_horizontal_velocity := Vector3.ZERO
+var idle_clock := 0.0
 
 func _ready() -> void:
 	name = "PlayerCharacter"
@@ -51,15 +56,29 @@ func _physics_process(delta: float) -> void:
 	right.y = 0.0
 	right = right.normalized()
 	var world_direction := (right * direction.x + forward * -direction.z).normalized()
-	velocity.x = move_toward(velocity.x, world_direction.x * speed, delta * 18.0)
-	velocity.z = move_toward(velocity.z, world_direction.z * speed, delta * 18.0)
+	movement_intent_world = world_direction
+	var target_horizontal := Vector3(world_direction.x * speed, 0.0, world_direction.z * speed)
+	var before_horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	velocity.x = move_toward(velocity.x, target_horizontal.x, delta * 18.0)
+	velocity.z = move_toward(velocity.z, target_horizontal.z, delta * 18.0)
+	var after_horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var acceleration_delta := (after_horizontal - previous_horizontal_velocity).length() / maxf(delta, 0.001)
+	locomotion_accel = move_toward(locomotion_accel, clampf(acceleration_delta / 18.0, 0.0, 1.0), delta * 7.0)
+	previous_horizontal_velocity = after_horizontal
+	if before_horizontal.length() > 0.25 and world_direction.length() > 0.08:
+		var cross_y := before_horizontal.normalized().cross(world_direction).y
+		turn_intensity = move_toward(turn_intensity, clampf(cross_y * 2.2, -1.0, 1.0), delta * 5.0)
+	else:
+		turn_intensity = move_toward(turn_intensity, 0.0, delta * 3.5)
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	else:
 		velocity.y = -0.25
 	if world_direction.length() > 0.08:
 		rotation.y = lerp_angle(rotation.y, atan2(-world_direction.x, -world_direction.z), 1.0 - exp(-delta * 11.0))
-	moving_amount = move_toward(moving_amount, 1.0 if world_direction.length() > 0.08 else 0.0, delta * 5.0)
+	moving_amount = move_toward(moving_amount, 1.0 if after_horizontal.length() > 0.35 else 0.0, delta * (7.0 if world_direction.length() > 0.08 else 4.0))
+	if moving_amount < 0.02:
+		idle_clock += delta
 	move_and_slide()
 	grounded_amount = move_toward(grounded_amount, 1.0 if is_on_floor() else 0.0, delta * 8.0)
 	_animate_character(delta)
@@ -310,6 +329,8 @@ func _animate_character(delta: float) -> void:
 	var run_blend := 1.0 if (sprinting or Input.is_key_pressed(KEY_SHIFT)) and horizontal_speed > walk_speed * 0.72 else 0.0
 	var speed_ratio := clampf(horizontal_speed / maxf(run_speed, 0.01), 0.0, 1.0)
 	var active_gait := moving_amount * grounded_amount
+	var start_stop_weight := clampf(locomotion_accel, 0.0, 1.0) * active_gait
+	var turn_weight := turn_intensity * active_gait
 	var cadence := lerpf(6.2, 9.4, run_blend) * lerpf(0.55, 1.0, speed_ratio)
 	anim_clock += delta * cadence
 	var gait := sin(anim_clock)
@@ -349,9 +370,12 @@ func _animate_character(delta: float) -> void:
 	if right_elbow:
 		right_elbow.rotation.x = -0.12 - opposite_knee_bend * 0.30
 	if visual_root:
-		var turn_amount := clampf(move_axis.x, -1.0, 1.0)
-		visual_root.position.y = absf(gait) * lerpf(0.012, 0.035, run_blend) * active_gait
-		visual_root.rotation.z = lerpf(0.018, 0.045, run_blend) * turn_amount * active_gait
+		var idle_sway := sin(idle_clock * 1.15) * 0.006 * (1.0 - active_gait)
+		var turn_lean := -turn_weight * lerpf(0.025, 0.055, run_blend)
+		var start_pitch := -start_stop_weight * 0.035
+		visual_root.position.y = absf(gait) * lerpf(0.012, 0.035, run_blend) * active_gait + idle_sway
+		visual_root.rotation.z = turn_lean + idle_sway * 0.35
+		visual_root.rotation.x = start_pitch
 		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * active_gait
-		var breath := 1.0 + sin(anim_clock * 1.7) * 0.003
+		var breath := 1.0 + sin(idle_clock * 1.7) * 0.003 * (1.0 - active_gait)
 		visual_root.scale = Vector3(1.0, breath, 1.0)
