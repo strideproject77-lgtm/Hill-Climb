@@ -46,6 +46,7 @@ var turn_intensity := 0.0
 var locomotion_accel := 0.0
 var previous_horizontal_velocity := Vector3.ZERO
 var idle_clock := 0.0
+var seating_tween: Tween
 
 func _ready() -> void:
 	name = "PlayerCharacter"
@@ -65,42 +66,34 @@ func enter_vehicle_visual(vehicle_root: Node3D, seat_position: Vector3) -> void:
 	if not is_instance_valid(visual_root) or not is_instance_valid(vehicle_root):
 		return
 	visual_root.reparent(vehicle_root, true)
-	visual_root.position = seat_position + Vector3(0.0,-0.48,0.0)
+	visual_root.position = seat_position + Vector3(0.0,-0.12,0.0)
 	visual_root.rotation = Vector3.ZERO
 	visual_root.scale = Vector3.ONE
-	# Fold thighs forward and lower legs under the dashboard; bend both
-	# elbows so the hands settle toward the steering wheel.
-	if left_leg:
-		left_leg.rotation.x = 0.92
-	if right_leg:
-		right_leg.rotation.x = 0.92
-	if left_knee:
-		left_knee.rotation.x = -1.18
-	if right_knee:
-		right_knee.rotation.x = -1.18
-	if left_ankle:
-		left_ankle.rotation.x = -0.12
-	if right_ankle:
-		right_ankle.rotation.x = -0.12
-	if left_arm:
-		left_arm.rotation.x = -0.62
-	if right_arm:
-		right_arm.rotation.x = -0.62
-	if left_elbow:
-		left_elbow.rotation.x = -0.72
-	if right_elbow:
-		right_elbow.rotation.x = -0.72
+	if seating_tween and seating_tween.is_running():
+		seating_tween.kill()
+	seating_tween = create_tween().set_parallel(true)
+	seating_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	seating_tween.tween_property(visual_root,"position",seat_position + Vector3(0.0,-0.48,0.0),0.38)
+	# Fold legs and bring the forearms forward as the character settles into
+	# the bucket seat; this is an animated procedural pose, not a mocap clip.
+	for limb_data in [[left_leg,0.92],[right_leg,0.92],[left_knee,-1.18],[right_knee,-1.18],[left_ankle,-0.12],[right_ankle,-0.12],[left_arm,-0.62],[right_arm,-0.62],[left_elbow,-0.72],[right_elbow,-0.72]]:
+		var limb: Node3D = limb_data[0]
+		if is_instance_valid(limb):
+			seating_tween.tween_property(limb,"rotation:x",float(limb_data[1]),0.36)
 
 func exit_vehicle_visual(character_root: Node3D) -> void:
 	if not is_instance_valid(visual_root) or not is_instance_valid(character_root):
 		return
 	visual_root.reparent(character_root, true)
-	visual_root.position = Vector3.ZERO
-	visual_root.rotation = Vector3.ZERO
-	visual_root.scale = Vector3.ONE
+	if seating_tween and seating_tween.is_running():
+		seating_tween.kill()
+	visual_root.position.y = -0.48
+	seating_tween = create_tween().set_parallel(true)
+	seating_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	seating_tween.tween_property(visual_root,"position",Vector3.ZERO,0.32)
 	for limb in [left_leg,right_leg,left_knee,right_knee,left_ankle,right_ankle,left_arm,right_arm,left_elbow,right_elbow]:
 		if is_instance_valid(limb):
-			limb.rotation = Vector3.ZERO
+			seating_tween.tween_property(limb,"rotation",Vector3.ZERO,0.30)
 
 func _physics_process(delta: float) -> void:
 	var keyboard := Vector2(
