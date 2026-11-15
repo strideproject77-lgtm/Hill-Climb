@@ -489,3 +489,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Walk/run blend now depends on sprint input plus actual horizontal speed, and cadence scales with movement speed.
 - Extra improvements: reduced accidental run animation while nearly stationary, made airborne limb motion less exaggerated and kept foot contact motion lightweight/procedural.
 - Remaining: this is an approximation, not physics-based foot locking. True planted-foot IK, a high-quality authored human mesh, a fully skinned Skeleton3D rig, polished animation clips, facial animation and device validation remain. Phase 6 is incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Turning, acceleration and idle transition polish — Source committed; validation pending
+- Added world-space movement intent tracking and horizontal acceleration sampling to drive character animation from actual movement rather than touch-axis assumptions.
+- Added smoothed turn intensity from the relationship between current velocity and new movement direction; the upper body now leans subtly into turns, with stronger response at run speed.
+- Added acceleration-aware forward body pitch and a separate low-amplitude idle sway/breathing clock; idle motion settles independently from the walking gait.
+- Extra improvements: more reliable turning response for camera-relative touch and keyboard movement, smoother stop/start blending, and less idle animation dependence on the locomotion clock.
+- Remaining: authored high-detail human mesh, genuinely skinned Skeleton3D rig, polished animation clips, foot-locking IK, facial animation, and consolidated Godot/Android plus device validation. Procedural geometry remains a placeholder-quality model; Phase 6 is incomplete.
