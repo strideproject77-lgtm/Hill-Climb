@@ -141,10 +141,26 @@ func _build_character() -> void:
 	var shoes := _material(Color("#17191b"))
 	var hair := _material(Color("#211b18"))
 	var trim := _material(Color("#c4a477"), 0.55)
+	# Layered torso and pelvis give the jacket/trouser transition a less
+	# cylindrical silhouette while staying inexpensive on mobile GPUs.
 	var torso := CapsuleMesh.new()
 	torso.radius = 0.34
 	torso.height = 0.86
 	_mesh(visual_root, torso, Vector3(0, 1.23, 0), shirt, "Jacket")
+	var pelvis := CapsuleMesh.new()
+	pelvis.radius = 0.255
+	pelvis.height = 0.43
+	_mesh(visual_root, pelvis, Vector3(0, 0.91, 0.005), trousers, "Pelvis")
+	var abdomen := SphereMesh.new()
+	abdomen.radius = 0.285
+	abdomen.height = 0.34
+	var abdomen_part := _mesh(visual_root, abdomen, Vector3(0, 1.02, -0.015), shirt)
+	abdomen_part.scale = Vector3(1.0, 0.82, 0.82)
+	var chest_shape := SphereMesh.new()
+	chest_shape.radius = 0.31
+	chest_shape.height = 0.42
+	var chest_part := _mesh(visual_root, chest_shape, Vector3(0, 1.48, 0.0), shirt)
+	chest_part.scale = Vector3(1.12, 0.72, 0.88)
 	var chest := BoxMesh.new()
 	chest.size = Vector3(0.54, 0.36, 0.09)
 	_mesh(visual_root, chest, Vector3(0, 1.31, -0.285), shirt_light)
@@ -191,6 +207,20 @@ func _build_character() -> void:
 		var foot := BoxMesh.new()
 		foot.size = Vector3(0.23, 0.13, 0.38)
 		_mesh(ankle, foot, Vector3(0, -0.045, -0.06), shoes)
+		# Keep every shoe detail inside the ankle pivot so the complete shoe
+		# follows foot lift, toe-off and ground adaptation together.
+		var sole := BoxMesh.new()
+		sole.size = Vector3(0.24, 0.045, 0.40)
+		_mesh(ankle, sole, Vector3(0, -0.105, -0.075), trim)
+		var shoe_toe := SphereMesh.new()
+		shoe_toe.radius = 0.12
+		shoe_toe.height = 0.11
+		var toe_part := _mesh(ankle, shoe_toe, Vector3(0, -0.015, -0.245), shoes)
+		toe_part.scale = Vector3(1.0, 0.72, 1.5)
+		for lace in range(3):
+			var lace_mesh := BoxMesh.new()
+			lace_mesh.size = Vector3(0.13, 0.012, 0.018)
+			_mesh(ankle, lace_mesh, Vector3(0, 0.025 + float(lace) * 0.018, -0.19 + float(lace) * 0.045), trim)
 		if side < 0:
 			left_leg = leg
 			left_knee = knee
@@ -264,12 +294,6 @@ func _build_character() -> void:
 		cuff.bottom_radius = 0.102
 		cuff.height = 0.09
 		_mesh(visual_root, cuff, Vector3(side * 0.39, 0.93, 0), trim)
-	for side in [-1.0, 1.0]:
-		var sole := BoxMesh.new()
-		sole.size = Vector3(0.24, 0.045, 0.40)
-		_mesh(visual_root, sole, Vector3(side * 0.17, 0.035, -0.075), trim)
-
-
 	# Face shaping: brows, nose, lips and inner ear details.
 	var lip_mat := _material(Color("#754b3e"), 0.72)
 	var nose_bridge := CapsuleMesh.new()
@@ -342,15 +366,6 @@ func _build_character() -> void:
 		var knee_panel := BoxMesh.new()
 		knee_panel.size = Vector3(0.19, 0.19, 0.035)
 		_mesh(visual_root, knee_panel, Vector3(side * 0.17, 0.43, -0.108), trousers)
-		var shoe_toe := SphereMesh.new()
-		shoe_toe.radius = 0.12
-		shoe_toe.height = 0.11
-		var toe_part := _mesh(visual_root, shoe_toe, Vector3(side * 0.17, 0.105, -0.245), shoes)
-		toe_part.scale = Vector3(1.0, 0.72, 1.5)
-		for lace in range(3):
-			var lace_mesh := BoxMesh.new()
-			lace_mesh.size = Vector3(0.13, 0.012, 0.018)
-			_mesh(visual_root, lace_mesh, Vector3(side * 0.17, 0.145 + float(lace) * 0.018, -0.19 + float(lace) * 0.045), trim)
 	# Fingers and thumbs are attached to each wrist so they follow arm motion.
 	for side in [-1.0, 1.0]:
 		var wrist := left_wrist if side < 0.0 else right_wrist
@@ -552,5 +567,12 @@ func _animate_character(delta: float) -> void:
 		visual_root.rotation.x = start_pitch
 		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * active_gait
 		visual_root.rotation.x += clampf(movement_intent_world.x, -1.0, 1.0) * 0.012
+		# Upper-body counter-rotation stabilizes the head and chest against
+		# the pelvis/leg swing, improving the read of weight and momentum.
+		var shoulder_counter := -swing * 0.075 * active_gait
+		if left_arm:
+			left_arm.rotation.y = shoulder_counter
+		if right_arm:
+			right_arm.rotation.y = shoulder_counter
 		var breath := 1.0 + sin(idle_clock * 1.7) * 0.003 * (1.0 - active_gait)
 		visual_root.scale = Vector3(1.0, breath, 1.0)
