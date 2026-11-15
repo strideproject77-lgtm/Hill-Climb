@@ -207,3 +207,13 @@ Track the vertical playable slice separately from total planned content. Count o
 - Added references for each procedural finger mesh and a small exertion-based finger curl so hands no longer remain completely static during faster movement.
 - Extra improvements: expression values are bounded and lightweight; all changes reuse existing geometry and avoid per-frame node creation.
 - Limitations: these are procedural expression/pose controls, not facial blendshapes or a true hand skeleton. A high-detail authored character, weighted Skeleton3D rig, authored animation clips, full two-bone foot-locking IK and consolidated Godot/Android/device validation remain outstanding. Phase 6 remains incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Multi-point foot contact refinement — Source implemented; validation pending
+- Replaced the single ground ray per foot with four probes distributed across heel, toe and both shoe edges.
+- Averages valid contact positions and surface normals before calculating ankle height, pitch and roll. This reduces sensitivity to narrow seams and small collision features compared with a single center ray.
+- Requires at least two valid samples before applying a new contact target; missing samples smoothly relax toward neutral instead of snapping.
+- Extra improvements: probe offsets follow the character's world orientation; normals are normalized and flipped to the upward hemisphere before averaging; per-foot smoothing remains independent.
+- Scope boundary: this improves multi-point procedural foot contact only. It is not a planted-foot lock, a two-bone IK solver, or a replacement for an authored weighted character rig.
+- Remaining Phase 6 work: proper authored 3D human mesh and weighted Skeleton3D, animation clips/blending, full foot-locking IK, interaction prompts/doors and reliable vehicle transition polish. Run the planned consolidated Godot parse/startup and Android validation once the phase batch is ready. No IPA build/sign/export was performed.
