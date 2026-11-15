@@ -1,10 +1,10 @@
 extends VehicleBody3D
 class_name StrideVehicle
 
-const ENGINE_POWER := 68.0
-const BRAKE_POWER := 42.0
+const ENGINE_POWER := 1150.0
+const BRAKE_POWER := 105.0
 const MAX_STEER := 0.48
-const STEER_RESPONSE := 2.8
+const STEER_RESPONSE := 4.2
 
 var throttle_input := 0.0
 var brake_input := 0.0
@@ -101,6 +101,18 @@ func _build_vehicle_model() -> void:
 	_add_box("RightMirror", Vector3(0.18,0.12,0.22), Vector3(0.92,0.72,-0.78), paint)
 	_add_box("FrontPlate", Vector3(0.42,0.10,0.025), Vector3(0,0.20,-2.19), chrome)
 	_add_box("RearPlate", Vector3(0.42,0.10,0.025), Vector3(0,0.23,2.04), chrome)
+	for side in [-1.0, 1.0]:
+		_add_box("FrontDoorGlass", Vector3(0.018,0.43,0.78), Vector3(side * 0.635,1.02,-0.48), glass)
+		_add_box("RearDoorGlass", Vector3(0.018,0.40,0.55), Vector3(side * 0.635,1.00,0.55), glass)
+		_add_box("FrontDoorSeam", Vector3(0.018,0.48,0.018), Vector3(side * 0.875,0.59,-0.40), trim)
+		_add_box("RearDoorSeam", Vector3(0.018,0.48,0.018), Vector3(side * 0.875,0.58,0.82), trim)
+		_add_box("FrontDoorHandle", Vector3(0.035,0.055,0.22), Vector3(side * 0.89,0.76,-0.12), chrome)
+		_add_box("RearDoorHandle", Vector3(0.035,0.055,0.20), Vector3(side * 0.88,0.75,1.05), chrome)
+		_add_box("SideSkirt", Vector3(0.12,0.16,2.05), Vector3(side * 0.87,0.16,0.05), trim)
+		_add_box("FrontIndicator", Vector3(0.035,0.075,0.18), Vector3(side * 0.89,0.40,-1.72), lamps)
+	_add_box("HoodCreaseLeft", Vector3(0.025,0.018,0.92), Vector3(-0.48,0.615,-1.58), chrome)
+	_add_box("HoodCreaseRight", Vector3(0.025,0.018,0.92), Vector3(0.48,0.615,-1.58), chrome)
+	_add_box("Dashboard", Vector3(1.02,0.13,0.32), Vector3(0,0.94,-0.62), trim)
 
 func _add_hull(stations: Array, material: Material, node_name: String) -> void:
 	var surface := SurfaceTool.new()
@@ -154,10 +166,10 @@ func _add_wheel(at: Vector3, steering_wheel: bool, traction_wheel: bool, wheel_n
 	wheel.wheel_radius = 0.37
 	wheel.wheel_rest_length = 0.19
 	wheel.suspension_travel = 0.22
-	wheel.suspension_stiffness = 31.0
-	wheel.damping_compression = 0.42
-	wheel.damping_relaxation = 0.52
-	wheel.wheel_friction_slip = 2.0
+	wheel.suspension_stiffness = 38.0
+	wheel.damping_compression = 0.58
+	wheel.damping_relaxation = 0.72
+	wheel.wheel_friction_slip = 3.1
 	wheel.wheel_roll_influence = 0.12
 	wheel.suspension_max_force = 6000.0
 	add_child(wheel)
