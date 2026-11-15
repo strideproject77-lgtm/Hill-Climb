@@ -213,7 +213,7 @@ func set_doors_open(open: bool, duration: float = 0.42) -> void:
 		door_tween.kill()
 	door_tween = create_tween().set_parallel(true)
 	var target := 1.0 if open else 0.0
-	door_tween.tween_method(_set_door_amount,target if open else door_open_amount,door_open_amount if open else target,duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	door_tween.tween_method(_set_door_amount,door_open_amount,target,duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 
 func _set_door_amount(amount: float) -> void:
 	door_open_amount = clampf(amount,0.0,1.0)
