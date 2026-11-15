@@ -62,7 +62,7 @@ jobs:
           set -euo pipefail
           # Ensure Godot invokes Apple's Xcode toolchain (including codesign)
           # rather than a standalone Command Line Tools selection.
-          xcode-select -s /Applications/Xcode.app/Contents/Developer
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
           xcode-select -p
           xcodebuild -version
           codesign --version
