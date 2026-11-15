@@ -108,3 +108,14 @@ Track the vertical playable slice separately from total planned content. Count o
 - Extra improvements: collision is disabled for the hidden player while inside the car; player and vehicle spawn near each other for immediate testing; the map scope is kept deliberately small to focus on landmark and character quality.
 - Limitations: character is procedural and not yet a fully rigged production model; tower geometry/dial orientation and local shopfront references need visual review; no pedestrians, traffic, interiors or minimap yet.
 - Remaining: one consolidated Godot + Android ARM64 APK validation and real-device inspection of visual fidelity, camera, movement, vehicle entry/exit, wheel contact and touch layout. Phase 3 and Phase 6 remain incomplete.
+
+
+## Progress entry — 2026-11-15
+### Visual + driving foundation correction batch — Source updated; validation pending
+- Corrected handheld and Android export orientation to landscape for the 1280×720 game viewport.
+- Increased sedan engine/brake response and improved suspension damping, stiffness and tyre grip.
+- Corrected chase-camera placement to follow from behind the vehicle.
+- Reworked mobile driving controls with steering on the left, larger accelerator/brake targets on the right, and simultaneous multi-touch input recomputation.
+- Added original sedan exterior details (side glazing, door seams/handles, skirts, hood creases and dashboard) and player face/clothing details (eyes, pockets, cuffs and shoe soles).
+- Extra improvements: clearer control grouping, more responsive handling and more defined character/vehicle silhouettes.
+- Remaining: one consolidated Godot parse/export validation, real-device visual and driving inspection, rigged character animation and production-quality original PBR assets. This is not yet GTA V-level fidelity. Phases 2 and 6 remain incomplete pending validation.
