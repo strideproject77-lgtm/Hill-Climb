@@ -1,356 +1,236 @@
 extends Node3D
 
-## Drivable 3D vehicle test slice. Sialkot GIS map is a separate data-driven phase.
 const CityLayout = preload("res://scripts/sialkot_city.gd")
-const WORLD_EXTENT := 1500.0
-const TERRAIN_CELLS := 112
-const TREE_COUNT := 190
-const ROAD_SEGMENTS := 220
-const ROAD_WIDTH := 12.0
+const PlayerScript = preload("res://scripts/player_character.gd")
 
-var terrain_noise := FastNoiseLite.new()
-var detail_noise := FastNoiseLite.new()
-var foliage_rng := RandomNumberGenerator.new()
 var city_layout: Node3D
 var vehicle: StrideVehicle
+var player: IHPlayerCharacter
 var follow_camera: Camera3D
 var speed_label: Label
+var mode_label: Label
 var control_buttons: Dictionary = {}
+var driving := false
+var hud_root: Control
+var camera_distance := 6.8
 
 func _ready() -> void:
 	_setup_environment()
 	city_layout = CityLayout.new()
-	city_layout.name = "SialkotCompactCity"
+	city_layout.name = "ClockTowerSaddarTestMap"
 	add_child(city_layout)
 	_spawn_vehicle()
+	_spawn_player()
 	_setup_camera()
 	_setup_mobile_hud()
+	_update_mode_ui()
 
 func _process(delta: float) -> void:
-	if is_instance_valid(vehicle):
-		_update_camera(delta)
+	if driving and is_instance_valid(vehicle):
+		_update_vehicle_camera(delta)
 		speed_label.text = "%03d km/h" % int(vehicle.speed_kmh)
-		follow_camera.fov = lerpf(68.0, 76.0, clampf(vehicle.speed_kmh / 150.0, 0.0, 1.0))
-
-func _setup_noise() -> void:
-	terrain_noise.seed = 48127
-	terrain_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
-	terrain_noise.frequency = 0.0018
-	terrain_noise.fractal_octaves = 5
-	terrain_noise.fractal_lacunarity = 2.1
-	terrain_noise.fractal_gain = 0.48
-	detail_noise.seed = 9271
-	detail_noise.noise_type = FastNoiseLite.TYPE_PERLIN
-	detail_noise.frequency = 0.012
-	detail_noise.fractal_octaves = 3
-	foliage_rng.seed = 741903
-
-func _height_at(_x: float, _z: float) -> float:
-	# The first Sialkot slice is an urban layout, so keep the road plane level.
-	return 0.0
+		follow_camera.fov = lerpf(66.0, 74.0, clampf(vehicle.speed_kmh / 105.0, 0.0, 1.0))
+	elif is_instance_valid(player):
+		_update_player_camera(delta)
+		speed_label.text = "ON FOOT  •  %s" % ("RUN" if player.moving_amount > 0.1 and player.sprinting else "WALK")
 
 func _setup_environment() -> void:
 	var world_env := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	var sky := Sky.new()
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color = Color("#263e5b")
-	sky_material.sky_horizon_color = Color("#c4a98b")
-	sky_material.ground_bottom_color = Color("#202a2a")
-	sky_material.ground_horizon_color = Color("#8b806d")
-	sky_material.sun_angle_max = 18.0
-	sky_material.use_debanding = true
-	sky.sky_material = sky_material
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color("#293c52")
+	sky_mat.sky_horizon_color = Color("#d1ad83")
+	sky_mat.ground_bottom_color = Color("#242b2b")
+	sky_mat.ground_horizon_color = Color("#897968")
+	sky_mat.use_debanding = true
+	sky.sky_material = sky_mat
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.ambient_light_energy = 0.72
+	environment.ambient_light_energy = 0.82
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	environment.tonemap_exposure = 1.05
+	environment.tonemap_exposure = 1.0
 	environment.adjustment_enabled = true
-	environment.adjustment_contrast = 1.08
-	environment.adjustment_saturation = 0.92
+	environment.adjustment_contrast = 1.07
+	environment.adjustment_saturation = 0.96
 	world_env.environment = environment
 	add_child(world_env)
 	var sun := DirectionalLight3D.new()
-	sun.name = "LateAfternoonSun"
-	sun.rotation_degrees = Vector3(-38,-28,0)
-	sun.light_color = Color("#ffe0b5")
-	sun.light_energy = 1.25
+	sun.name = "WarmLateAfternoonSun"
+	sun.rotation_degrees = Vector3(-42,-32,0)
+	sun.light_color = Color("#ffe0bd")
+	sun.light_energy = 1.18
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 180.0
+	sun.directional_shadow_max_distance = 115.0
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(sun)
 
-func _build_terrain() -> void:
-	var vertices := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	var indices := PackedInt32Array()
-	var step := WORLD_EXTENT*2.0/float(TERRAIN_CELLS)
-	for zi in range(TERRAIN_CELLS+1):
-		for xi in range(TERRAIN_CELLS+1):
-			var x := -WORLD_EXTENT+float(xi)*step
-			var z := -WORLD_EXTENT+float(zi)*step
-			vertices.append(Vector3(x,_height_at(x,z),z))
-			uvs.append(Vector2(float(xi)/8.0,float(zi)/8.0))
-	for zi in range(TERRAIN_CELLS):
-		for xi in range(TERRAIN_CELLS):
-			var a := zi*(TERRAIN_CELLS+1)+xi
-			var b := a+1
-			var c := a+TERRAIN_CELLS+1
-			var d := c+1
-			indices.append_array(PackedInt32Array([a,c,b,b,c,d]))
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX]=vertices
-	arrays[Mesh.ARRAY_TEX_UV]=uvs
-	arrays[Mesh.ARRAY_INDEX]=indices
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
-	var st := SurfaceTool.new()
-	st.create_from(mesh,0)
-	st.generate_normals()
-	var smooth_mesh := st.commit()
-	var terrain := MeshInstance3D.new()
-	terrain.name = "ProceduralLandscape"
-	terrain.mesh = smooth_mesh
-	terrain.material_override = _make_terrain_material()
-	add_child(terrain)
-	var terrain_body := StaticBody3D.new()
-	terrain_body.name = "TerrainCollision"
-	var terrain_shape := CollisionShape3D.new()
-	var concave := ConcavePolygonShape3D.new()
-	concave.set_faces(smooth_mesh.get_faces())
-	terrain_shape.shape = concave
-	terrain_body.add_child(terrain_shape)
-	add_child(terrain_body)
-
-func _make_terrain_material() -> ShaderMaterial:
-	var shader := Shader.new()
-	shader.code = """
-shader_type spatial;
-render_mode diffuse_burley, specular_schlick_ggx;
-varying vec3 world_pos;
-varying vec3 world_normal;
-float hash21(vec2 p) {
- p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y);
-}
-float noise2(vec2 p) {
- vec2 i=floor(p); vec2 f=fract(p); f=f*f*(3.0-2.0*f);
- return mix(mix(hash21(i),hash21(i+vec2(1.0,0.0)),f.x),mix(hash21(i+vec2(0.0,1.0)),hash21(i+vec2(1.0,1.0)),f.x),f.y);
-}
-void vertex() {
- vec4 wp=MODEL_MATRIX*vec4(VERTEX,1.0); world_pos=wp.xyz; world_normal=normalize(MODEL_NORMAL_MATRIX*NORMAL);
-}
-void fragment() {
- float slope=1.0-clamp(world_normal.y,0.0,1.0);
- float n=noise2(world_pos.xz*0.075)*0.5+noise2(world_pos.xz*0.31)*0.18;
- vec3 grass=mix(vec3(0.105,0.155,0.105),vec3(0.22,0.255,0.15),n);
- vec3 soil=mix(vec3(0.22,0.19,0.14),vec3(0.34,0.28,0.20),n);
- vec3 rock=mix(vec3(0.25,0.245,0.22),vec3(0.43,0.40,0.34),n);
- float band=smoothstep(0.34,0.58,n)*(1.0-smoothstep(0.62,0.82,n));
- ALBEDO=mix(mix(grass,soil,band*0.48),rock,smoothstep(0.24,0.68,slope));
- ROUGHNESS=0.94; SPECULAR=0.12;
-}
-"""
-	var material := ShaderMaterial.new()
-	material.shader = shader
-	return material
-
-func _road_center(x: float) -> float:
-	return sin(x*0.00115)*155.0+sin(x*0.0031+0.7)*34.0
-
-func _build_road() -> void:
-	var vertices := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	var indices := PackedInt32Array()
-	for i in range(ROAD_SEGMENTS+1):
-		var x := -WORLD_EXTENT+float(i)*(WORLD_EXTENT*2.0/float(ROAD_SEGMENTS))
-		var z := _road_center(x)
-		var tangent := Vector3(3.0,0.0,_road_center(x+3.0)-z).normalized()
-		var side := tangent.cross(Vector3.UP).normalized()
-		var center := Vector3(x,_height_at(x,z)+1.25,z)
-		vertices.append(center-side*ROAD_WIDTH*0.5)
-		vertices.append(center+side*ROAD_WIDTH*0.5)
-		uvs.append(Vector2(0,float(i)*0.8))
-		uvs.append(Vector2(1,float(i)*0.8))
-	for i in range(ROAD_SEGMENTS):
-		var a := i*2
-		indices.append_array(PackedInt32Array([a,a+1,a+2,a+1,a+3,a+2]))
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX]=vertices
-	arrays[Mesh.ARRAY_TEX_UV]=uvs
-	arrays[Mesh.ARRAY_INDEX]=indices
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
-	var st := SurfaceTool.new()
-	st.create_from(mesh,0)
-	st.generate_normals()
-	var road_mesh := st.commit()
-	var road := MeshInstance3D.new()
-	road.name = "WindingAsphaltRoad"
-	road.mesh = road_mesh
-	var asphalt := StandardMaterial3D.new()
-	asphalt.albedo_color = Color("#292d30")
-	asphalt.roughness = 0.91
-	asphalt.metallic = 0.03
-	road.material_override = asphalt
-	add_child(road)
-	var road_body := StaticBody3D.new()
-	road_body.name = "RoadCollision"
-	var road_shape := CollisionShape3D.new()
-	var road_collision := ConcavePolygonShape3D.new()
-	road_collision.set_faces(road_mesh.get_faces())
-	road_shape.shape = road_collision
-	road_body.add_child(road_shape)
-	add_child(road_body)
-
-func _build_road_markings() -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("#d6c59b")
-	material.roughness = 0.8
-	for i in range(74):
-		var x := -WORLD_EXTENT+float(i)*40.0
-		var z := _road_center(x)
-		var stripe := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(8.0,0.08,0.22)
-		stripe.mesh = box
-		stripe.position = Vector3(x,_height_at(x,z)+2.0,z)
-		stripe.rotation.y = -atan2(_road_center(x+2.0)-z,2.0)
-		stripe.material_override = material
-		add_child(stripe)
-
-func _build_vegetation() -> void:
-	var trunk_mat := StandardMaterial3D.new()
-	trunk_mat.albedo_color = Color("#51402c")
-	var leaf_mat := StandardMaterial3D.new()
-	leaf_mat.albedo_color = Color("#304a32")
-	for i in range(TREE_COUNT):
-		var x := foliage_rng.randf_range(-WORLD_EXTENT+35.0,WORLD_EXTENT-35.0)
-		var z := foliage_rng.randf_range(-WORLD_EXTENT+35.0,WORLD_EXTENT-35.0)
-		if absf(z-_road_center(x))<28.0:
-			continue
-		var tree := Node3D.new()
-		tree.position = Vector3(x,_height_at(x,z),z)
-		tree.scale = Vector3.ONE*foliage_rng.randf_range(0.75,1.55)
-		var trunk := MeshInstance3D.new()
-		var cylinder := CylinderMesh.new()
-		cylinder.top_radius=0.34
-		cylinder.bottom_radius=0.55
-		cylinder.height=5.2
-		trunk.mesh=cylinder
-		trunk.position.y=2.6
-		trunk.material_override=trunk_mat
-		tree.add_child(trunk)
-		var crown := MeshInstance3D.new()
-		var sphere := SphereMesh.new()
-		sphere.radius=2.5
-		sphere.height=5.4
-		crown.mesh=sphere
-		crown.position.y=6.0
-		crown.material_override=leaf_mat
-		tree.add_child(crown)
-		add_child(tree)
-
-func _build_distant_ridge() -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color=Color("#59605b")
-	for i in range(13):
-		var ridge := MeshInstance3D.new()
-		var mountain := PrismMesh.new()
-		mountain.size=Vector3(170.0+float(i%4)*38.0,115.0+float(i%5)*22.0,95.0)
-		ridge.mesh=mountain
-		ridge.position=Vector3(-1100.0+float(i)*185.0,22.0,-1080.0-float(i%3)*80.0)
-		ridge.rotation.y=float(i)*0.37
-		ridge.material_override=material
-		add_child(ridge)
-
 func _spawn_vehicle() -> void:
 	vehicle = StrideVehicle.new()
-	vehicle.name = "PlayerSedan"
-	vehicle.position = Vector3(0.0,1.15,-78.0)
-	vehicle.rotation.y = 0.0
+	vehicle.name = "ClockTowerTestSedan"
+	vehicle.position = Vector3(-18.0,1.2,42.0)
+	vehicle.rotation.y = PI
 	add_child(vehicle)
+
+func _spawn_player() -> void:
+	player = PlayerScript.new()
+	player.position = Vector3(5.0,0.15,1.5)
+	add_child(player)
 
 func _setup_camera() -> void:
 	follow_camera = Camera3D.new()
-	follow_camera.name = "VehicleChaseCamera"
-	follow_camera.fov = 68.0
-	follow_camera.far = 1800.0
+	follow_camera.name = "ThirdPersonFollowCamera"
+	follow_camera.fov = 66.0
+	follow_camera.near = 0.08
+	follow_camera.far = 650.0
 	follow_camera.current = true
 	add_child(follow_camera)
-	follow_camera.global_position = vehicle.global_position+Vector3(0,5,9)
-	follow_camera.look_at(vehicle.global_position+Vector3.UP,Vector3.UP)
+	_update_player_camera(1.0)
 
-func _update_camera(delta: float) -> void:
+func _update_player_camera(delta: float) -> void:
+	var target := player.global_position + Vector3.UP * 1.42
+	var forward := -player.global_transform.basis.z
+	var desired := target + forward * 6.4 + Vector3.UP * 2.65
+	follow_camera.global_position = follow_camera.global_position.lerp(desired, 1.0 - exp(-delta * 6.5))
+	follow_camera.look_at(target + forward * 1.8, Vector3.UP)
+
+func _update_vehicle_camera(delta: float) -> void:
 	var behind := -vehicle.global_transform.basis.z.normalized()
-	var target := vehicle.global_position+behind*8.8+Vector3.UP*4.2
-	follow_camera.global_position=follow_camera.global_position.lerp(target,1.0-exp(-delta*4.2))
-	follow_camera.look_at(vehicle.global_position+Vector3.UP*1.05+vehicle.linear_velocity*0.08,Vector3.UP)
+	var target := vehicle.global_position + behind * 8.6 + Vector3.UP * 4.0
+	follow_camera.global_position = follow_camera.global_position.lerp(target, 1.0 - exp(-delta * 4.6))
+	follow_camera.look_at(vehicle.global_position + Vector3.UP * 1.0 + vehicle.linear_velocity * 0.055, Vector3.UP)
 
 func _setup_mobile_hud() -> void:
 	var layer := CanvasLayer.new()
-	layer.name="DrivingHUD"
+	layer.name = "ClockTowerTestingHUD"
 	add_child(layer)
-	var root := Control.new()
-	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.mouse_filter=Control.MOUSE_FILTER_IGNORE
-	layer.add_child(root)
-	speed_label=Label.new()
-	speed_label.position=Vector2(24,22)
-	speed_label.add_theme_font_size_override("font_size",25)
-	speed_label.add_theme_color_override("font_color",Color("#f4e7cb"))
-	root.add_child(speed_label)
-	var location := Label.new()
-	location.position=Vector2(26,57)
-	location.text="INFINITE HORIZONS  •  SIALKOT CITY DISTRICT"
-	location.add_theme_font_size_override("font_size",12)
-	location.add_theme_color_override("font_color",Color("#d3c4a4"))
-	root.add_child(location)
-	_add_touch_button(root,"STEER LEFT","◀",Vector2(22,-118),Vector2(94,-34),false,"left")
-	_add_touch_button(root,"STEER RIGHT","▶",Vector2(104,-118),Vector2(176,-34),false,"right")
-	_add_touch_button(root,"BRAKE","BRAKE",Vector2(-188,-104),Vector2(-102,-28),true,"brake")
-	_add_touch_button(root,"ACCELERATE","DRIVE",Vector2(-94,-142),Vector2(-22,-28),true,"throttle")
+	hud_root = Control.new()
+	hud_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(hud_root)
+	var panel := PanelContainer.new()
+	panel.position = Vector2(18,16)
+	panel.custom_minimum_size = Vector2(290,88)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#101a20",0.78)
+	style.border_color = Color("#b28b5c",0.9)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(13)
+	style.content_margin_left = 14
+	style.content_margin_right = 14
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	panel.add_theme_stylebox_override("panel",style)
+	hud_root.add_child(panel)
+	var info := VBoxContainer.new()
+	panel.add_child(info)
+	var title := Label.new()
+	title.text = "INFINITE HORIZONS  /  FIELD TEST"
+	title.add_theme_font_size_override("font_size",12)
+	title.add_theme_color_override("font_color",Color("#d9b98d"))
+	info.add_child(title)
+	speed_label = Label.new()
+	speed_label.add_theme_font_size_override("font_size",22)
+	speed_label.add_theme_color_override("font_color",Color("#f4ead7"))
+	info.add_child(speed_label)
+	mode_label = Label.new()
+	mode_label.position = Vector2(20,112)
+	mode_label.text = "CLOCK TOWER • SADDAR BAZAAR"
+	mode_label.add_theme_font_size_override("font_size",12)
+	mode_label.add_theme_color_override("font_color",Color("#e7d5b8"))
+	hud_root.add_child(mode_label)
+	_add_button("MOVE FORWARD","▲",Vector2(24,-198),Vector2(104,-130),false,"forward")
+	_add_button("MOVE BACK","▼",Vector2(24,-112),Vector2(104,-44),false,"back")
+	_add_button("MOVE LEFT","◀",Vector2(112,-112),Vector2(192,-44),false,"left")
+	_add_button("MOVE RIGHT","▶",Vector2(112,-198),Vector2(192,-130),false,"right")
+	_add_button("SPRINT","RUN",Vector2(208,-94),Vector2(292,-28),false,"sprint")
+	_add_button("VEHICLE GAS","DRIVE",Vector2(-190,-142),Vector2(-104,-72),true,"throttle")
+	_add_button("VEHICLE BRAKE","BRAKE",Vector2(-96,-104),Vector2(-18,-34),true,"brake")
+	_add_button("VEHICLE LEFT","◀",Vector2(-190,-62),Vector2(-112,8),true,"car_left")
+	_add_button("VEHICLE RIGHT","▶",Vector2(-102,-62),Vector2(-24,8),true,"car_right")
+	_add_button("ENTER OR EXIT","ENTER CAR",Vector2(-170,-220),Vector2(-22,-158),true,"interact")
 
-func _add_touch_button(root: Control, accessible_name: String, caption: String, top_left: Vector2, bottom_right: Vector2, right_side: bool, control_name: String) -> void:
+func _add_button(accessible_name: String, caption: String, top_left: Vector2, bottom_right: Vector2, right_side: bool, control_name: String) -> void:
 	var button := Button.new()
-	button.name=accessible_name.replace(" ","")
-	button.text=caption
-	button.focus_mode=Control.FOCUS_NONE
-	button.mouse_filter=Control.MOUSE_FILTER_STOP
-	button.add_theme_font_size_override("font_size",17 if caption.length()<5 else 13)
-	button.add_theme_color_override("font_color",Color("#f4ead6"))
+	button.name = accessible_name.replace(" ","")
+	button.text = caption
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.add_theme_font_size_override("font_size",14)
+	button.add_theme_color_override("font_color",Color("#f5ead7"))
 	var normal := StyleBoxFlat.new()
-	normal.bg_color=Color("#17232c",0.78)
-	normal.border_color=Color("#b88c50",0.85)
-	normal.set_border_width_all(2)
-	normal.set_corner_radius_all(14)
+	normal.bg_color = Color("#14212a",0.82)
+	normal.border_color = Color("#b68c58",0.9)
+	normal.set_border_width_all(1)
+	normal.set_corner_radius_all(13)
 	var pressed := normal.duplicate() as StyleBoxFlat
-	pressed.bg_color=Color("#9a612f",0.92)
+	pressed.bg_color = Color("#98683d",0.96)
 	button.add_theme_stylebox_override("normal",normal)
 	button.add_theme_stylebox_override("hover",normal)
 	button.add_theme_stylebox_override("pressed",pressed)
 	button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT if right_side else Control.PRESET_BOTTOM_LEFT)
-	button.offset_left=top_left.x
-	button.offset_top=top_left.y
-	button.offset_right=bottom_right.x
-	button.offset_bottom=bottom_right.y
+	button.offset_left = top_left.x
+	button.offset_top = top_left.y
+	button.offset_right = bottom_right.x
+	button.offset_bottom = bottom_right.y
 	button.button_down.connect(_on_button_down.bind(control_name))
 	button.button_up.connect(_on_button_up.bind(control_name))
-	root.add_child(button)
-	control_buttons[control_name]=button
+	hud_root.add_child(button)
+	control_buttons[control_name] = button
+
+func _update_mode_ui() -> void:
+	for key in ["forward","back","left","right","sprint"]:
+		control_buttons[key].visible = not driving
+	for key in ["throttle","brake","car_left","car_right"]:
+		control_buttons[key].visible = driving
+	control_buttons["interact"].text = "EXIT VEHICLE" if driving else "ENTER VEHICLE"
+	mode_label.text = "CLOCK TOWER • " + ("DRIVING TEST" if driving else "ON-FOOT TEST")
 
 func _on_button_down(name: String) -> void:
 	match name:
-		"left": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,-1.0)
-		"right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,1.0)
+		"forward","back","left","right","sprint":
+			_update_player_input()
 		"throttle": vehicle.set_drive_controls(1.0,vehicle.brake_input,vehicle.steer_input)
 		"brake": vehicle.set_drive_controls(vehicle.throttle_input,1.0,vehicle.steer_input)
+		"car_left": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,-1.0)
+		"car_right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,1.0)
+		"interact": _toggle_vehicle()
 
 func _on_button_up(name: String) -> void:
 	match name:
-		"left","right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,0.0)
+		"forward","back","left","right","sprint":
+			_update_player_input()
 		"throttle": vehicle.set_drive_controls(0.0,vehicle.brake_input,vehicle.steer_input)
 		"brake": vehicle.set_drive_controls(vehicle.throttle_input,0.0,vehicle.steer_input)
+		"car_left","car_right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,0.0)
+
+func _update_player_input() -> void:
+	var x := float(control_buttons["right"].button_pressed) - float(control_buttons["left"].button_pressed)
+	var y := float(control_buttons["back"].button_pressed) - float(control_buttons["forward"].button_pressed)
+	player.set_move_input(Vector2(x,y),control_buttons["sprint"].button_pressed)
+
+func _toggle_vehicle() -> void:
+	if not driving:
+		if player.global_position.distance_to(vehicle.global_position) > 5.5:
+			mode_label.text = "MOVE CLOSER TO THE SEDAN"
+			return
+		driving = true
+		player.visible = false
+		player.set_physics_process(false)
+		vehicle.freeze = false
+		vehicle.sleeping = false
+	else:
+		driving = false
+		vehicle.set_drive_controls(0.0,1.0,0.0)
+		player.global_position = vehicle.global_position + vehicle.global_transform.basis.x * 2.4 + Vector3.UP * 0.2
+		player.velocity = Vector3.ZERO
+		player.visible = true
+		player.set_physics_process(true)
+		vehicle.set_drive_controls(0.0,0.0,0.0)
+	_update_mode_ui()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_E:
+			_toggle_vehicle()
