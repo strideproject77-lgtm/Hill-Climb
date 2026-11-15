@@ -507,3 +507,11 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Added restrained wrist counter-motion during gait so palms and fingers follow the forearm rather than remaining visually detached.
 - Extra improvements: corrected hand alignment, improved left/right hand symmetry and kept the additional animation lightweight with no external assets.
 - Remaining: authored high-detail human mesh, truly skinned Skeleton3D rig, polished animation clips, hand/finger posing, foot-locking IK, facial animation and consolidated Godot/Android plus device validation. This is still a procedural character; Phase 6 remains incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Facial motion and uneven-ground foot adaptation — Source committed; validation pending
+- Added timed eyelid blinking, subtle pupil gaze response based on movement direction and restrained idle mouth movement to animate the existing procedural face.
+- Added per-foot downward ground probes with smoothed ankle-height correction on grounded terrain, helping feet adapt to small road/sidewalk height differences.
+- Extra improvements: ray queries exclude the player body, offsets are clamped, and corrections are smoothed to avoid abrupt ankle snapping.
+- Limitations: this is procedural facial motion and ankle-height adaptation, not an authored high-detail face, blendshape rig or full two-bone foot-locking IK. A real skinned human asset, Skeleton3D skin weights and authored animation clips remain outstanding. Phase 6 remains incomplete; consolidated validation is pending.
