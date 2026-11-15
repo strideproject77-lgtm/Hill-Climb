@@ -93,6 +93,23 @@ func _make_roads_and_squares() -> void:
 	square.position.y = 0.12
 	square.material_override = _mat(Color("#a99b85"), 0.9)
 	add_child(square)
+	# Raised pedestrian walks beside the main roads.
+	var walk_mat := pavement
+	for side in [-1.0,1.0]:
+		var walk_h := MeshInstance3D.new()
+		var walk_h_mesh := BoxMesh.new()
+		walk_h_mesh.size = Vector3(MAP_HALF * 2.0, 0.18, 4.0)
+		walk_h.mesh = walk_h_mesh
+		walk_h.position = Vector3(0,0.08,side * 11.2)
+		walk_h.material_override = walk_mat
+		add_child(walk_h)
+		var walk_v := MeshInstance3D.new()
+		var walk_v_mesh := BoxMesh.new()
+		walk_v_mesh.size = Vector3(4.0, 0.18, MAP_HALF * 2.0)
+		walk_v.mesh = walk_v_mesh
+		walk_v.position = Vector3(side * 10.8,0.08,0)
+		walk_v.material_override = walk_mat
+		add_child(walk_v)
 	# Four pedestrian refuge corners and a tiled public apron.
 	for angle in [0.0, PI * 0.5, PI, PI * 1.5]:
 		var curb := MeshInstance3D.new()
@@ -105,8 +122,8 @@ func _make_roads_and_squares() -> void:
 		add_child(curb)
 
 func _make_bazaar_blocks() -> void:
-	for x in [-310.0, -205.0, -105.0, 105.0, 205.0, 310.0]:
-		for z in [-310.0, -205.0, -105.0, 105.0, 205.0, 310.0]:
+	for x in [-310.0, -105.0, 105.0, 310.0]:
+		for z in [-310.0, -105.0, 105.0, 310.0]:
 			if absf(x) < 75.0 or absf(z) < 75.0:
 				continue
 			var width := rng.randf_range(42.0, 66.0)
