@@ -1,15 +1,16 @@
 extends VehicleBody3D
 class_name StrideVehicle
 
-const ENGINE_POWER := 1150.0
-const BRAKE_POWER := 105.0
-const MAX_STEER := 0.48
-const STEER_RESPONSE := 4.2
+const ENGINE_POWER := 980.0
+const BRAKE_POWER := 128.0
+const MAX_STEER := 0.50
+const STEER_RESPONSE := 5.0
 
 var throttle_input := 0.0
 var brake_input := 0.0
 var steer_input := 0.0
 var speed_kmh := 0.0
+var traction_limiter := 1.0
 var model_root: Node3D
 var left_front_door: Node3D
 var right_front_door: Node3D
@@ -43,9 +44,18 @@ func _physics_process(delta: float) -> void:
 	var throttle := maxf(throttle_input, 1.0 if gas_key else 0.0)
 	var braking := maxf(brake_input, 1.0 if brake_key else 0.0)
 	var steer_axis := steer_input if absf(steer_input) > 0.01 else steer_key
-	engine_force = throttle * ENGINE_POWER
+	var speed_ratio := clampf(speed_kmh / 220.0,0.0,1.0)
+	# Progressive torque delivery and speed-sensitive steering keep the
+	# high-powered rear-drive coupe controllable on narrow city streets.
+	var torque_curve := lerpf(1.0,0.62,speed_ratio)
+	var traction_target := 0.78 if absf(steer_axis) > 0.35 and speed_kmh > 65.0 else 1.0
+	traction_limiter = move_toward(traction_limiter,traction_target if throttle > 0.0 else 1.0,delta * 2.8)
+	engine_force = throttle * ENGINE_POWER * torque_curve * traction_limiter
 	brake = braking * BRAKE_POWER
-	steering = move_toward(steering, -steer_axis * MAX_STEER, delta * STEER_RESPONSE)
+	var steer_limit := lerpf(MAX_STEER,0.20,speed_ratio)
+	steering = move_toward(steering, -steer_axis * steer_limit, delta * STEER_RESPONSE)
+	linear_damp = lerpf(0.035,0.11,speed_ratio)
+	angular_damp = lerpf(0.8,1.35,speed_ratio)
 	if is_instance_valid(steering_wheel):
 		steering_wheel.rotation.z = -steering * 0.72
 	speed_kmh = linear_velocity.length() * 3.6
@@ -111,14 +121,12 @@ func _build_vehicle_model() -> void:
 	_add_box("FrontPlate", Vector3(0.42,0.10,0.025), Vector3(0,0.20,-2.19), chrome)
 	_add_box("RearPlate", Vector3(0.42,0.10,0.025), Vector3(0,0.23,2.04), chrome)
 	for side in [-1.0, 1.0]:
-		_add_box("FrontDoorGlass", Vector3(0.018,0.43,0.78), Vector3(side * 0.635,1.02,-0.48), glass)
-		_add_box("RearDoorGlass", Vector3(0.018,0.40,0.55), Vector3(side * 0.635,1.00,0.55), glass)
-		_add_box("FrontDoorSeam", Vector3(0.018,0.48,0.018), Vector3(side * 0.875,0.59,-0.40), trim)
-		_add_box("RearDoorSeam", Vector3(0.018,0.48,0.018), Vector3(side * 0.875,0.58,0.82), trim)
-		_add_box("FrontDoorHandle", Vector3(0.035,0.055,0.22), Vector3(side * 0.89,0.76,-0.12), chrome)
-		_add_box("RearDoorHandle", Vector3(0.035,0.055,0.20), Vector3(side * 0.88,0.75,1.05), chrome)
+		_add_box("CoupeSideGlass", Vector3(0.018,0.43,1.45), Vector3(side * 0.635,1.02,0.03), glass)
+		_add_box("RearQuarterGlass", Vector3(0.018,0.30,0.42), Vector3(side * 0.625,1.00,0.92), glass)
 		_add_box("SideSkirt", Vector3(0.12,0.16,2.05), Vector3(side * 0.87,0.16,0.05), trim)
+		_add_box("FrontFenderVent", Vector3(0.025,0.18,0.30), Vector3(side * 0.885,0.47,-1.30), trim)
 		_add_box("FrontIndicator", Vector3(0.035,0.075,0.18), Vector3(side * 0.89,0.40,-1.72), lamps)
+		_add_box("WideRearHaunch", Vector3(0.12,0.22,0.82), Vector3(side * 0.875,0.37,1.12), paint)
 	_add_box("HoodCreaseLeft", Vector3(0.025,0.018,0.92), Vector3(-0.48,0.615,-1.58), chrome)
 	_add_box("HoodCreaseRight", Vector3(0.025,0.018,0.92), Vector3(0.48,0.615,-1.58), chrome)
 	_add_box("Dashboard", Vector3(1.02,0.13,0.32), Vector3(0,0.94,-0.62), trim)
@@ -302,3 +310,37 @@ func _add_wheel(at: Vector3, steering_wheel: bool, traction_wheel: bool, wheel_n
 	rim.rotation.z = PI*0.5
 	rim.material_override = _paint(Color("#aeb9c0"),0.88,0.2)
 	wheel.add_child(rim)
+	var brake_disc := MeshInstance3D.new()
+	var disc_mesh := CylinderMesh.new()
+	disc_mesh.top_radius = 0.185
+	disc_mesh.bottom_radius = 0.185
+	disc_mesh.height = 0.045
+	brake_disc.mesh = disc_mesh
+	brake_disc.rotation.z = PI * 0.5
+	brake_disc.material_override = _paint(Color("#737d84"),0.78,0.36)
+	wheel.add_child(brake_disc)
+	var hub := MeshInstance3D.new()
+	var hub_mesh := CylinderMesh.new()
+	hub_mesh.top_radius = 0.075
+	hub_mesh.bottom_radius = 0.075
+	hub_mesh.height = 0.28
+	hub.mesh = hub_mesh
+	hub.rotation.z = PI * 0.5
+	hub.material_override = _paint(Color("#d4dbe0"),0.92,0.18)
+	wheel.add_child(hub)
+	var caliper := MeshInstance3D.new()
+	var caliper_mesh := BoxMesh.new()
+	caliper_mesh.size = Vector3(0.09,0.17,0.10)
+	caliper.mesh = caliper_mesh
+	caliper.position = Vector3(0.0,0.0,-0.16)
+	caliper.material_override = _paint(Color("#a82e28"),0.35,0.3)
+	wheel.add_child(caliper)
+	for spoke_index in range(10):
+		var spoke := MeshInstance3D.new()
+		var spoke_mesh := BoxMesh.new()
+		spoke_mesh.size = Vector3(0.035,0.22,0.035)
+		spoke.mesh = spoke_mesh
+		spoke.position = Vector3(0.0,0.0,0.0)
+		spoke.rotation.z = TAU * float(spoke_index) / 10.0
+		spoke.material_override = _paint(Color("#c3cbd0"),0.9,0.19)
+		wheel.add_child(spoke)
