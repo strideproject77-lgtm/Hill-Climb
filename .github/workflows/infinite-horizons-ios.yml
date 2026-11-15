@@ -1,22 +1,27 @@
-name: Infinite Horizons iOS IPA (Manual)
+name: Infinite Horizons iOS IPA
 
 on:
   workflow_dispatch:
     inputs:
       authorize_ipa_export:
-        description: "Explicitly authorize signing/exporting an IPA in this run"
+        description: "Explicitly authorize signing and exporting the IPA"
         required: true
         type: boolean
         default: false
+  push:
+    branches:
+      - hill-climb-game
+    paths:
+      - "game/IOS_BUILD_TRIGGER"
 
 permissions:
   contents: read
 
 jobs:
   export-ipa:
-    if: inputs.authorize_ipa_export == true
+    if: github.event_name == 'push' || inputs.authorize_ipa_export == true
     runs-on: macos-14
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - name: Checkout game branch
         uses: actions/checkout@v4
@@ -37,12 +42,17 @@ jobs:
               exit 1
             fi
           done
+          if [ "${#IOS_TEAM_ID}" -ne 10 ]; then
+            echo "::error::IOS_TEAM_ID must be the 10-character Apple Team ID."
+            exit 1
+          fi
 
-      - name: Install Apple signing assets
+      - name: Install Apple signing assets and validate profile
         env:
           IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
         run: |
           set -euo pipefail
           KEYCHAIN_PATH="$RUNNER_TEMP/ih-build.keychain-db"
@@ -54,36 +64,56 @@ jobs:
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$IOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
           security import "$CERT_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$IOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
           PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
+          PROFILE_BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")
+          PROFILE_DEV=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$RUNNER_TEMP/profile.plist" 2>/dev/null || echo false)
+          if [ "$PROFILE_TEAM" != "$IOS_TEAM_ID" ]; then
+            echo "::error::Provisioning profile Team ID does not match IOS_TEAM_ID."
+            exit 1
+          fi
+          case "$PROFILE_BUNDLE" in
+            "$IOS_TEAM_ID.com.strideproject.openworld"|"$IOS_TEAM_ID.*") ;;
+            *) echo "::error::Provisioning profile does not cover com.strideproject.openworld."; exit 1 ;;
+          esac
           cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          IDENTITY_LINE=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -m1 '"')
+          if [ -z "$IDENTITY_LINE" ]; then
+            echo "::error::No usable Apple code-signing identity found in the P12 certificate."
+            exit 1
+          fi
+          SIGN_IDENTITY=$(printf '%s\n' "$IDENTITY_LINE" | sed -E 's/^[[:space:]]*[0-9]+\) [A-F0-9]+ "(.*)"$/\1/')
           echo "IOS_PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+          echo "IOS_PROFILE_DEV=$PROFILE_DEV" >> "$GITHUB_ENV"
+          echo "IOS_SIGN_IDENTITY=$SIGN_IDENTITY" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
       - name: Install Godot 4.4.1 and iOS export templates
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 \\
-            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip \\
+          curl --fail --location --retry 3 \
+            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip \
             -o "$RUNNER_TEMP/godot-macos.zip"
           mkdir -p "$RUNNER_TEMP/godot-app"
           ditto -x -k "$RUNNER_TEMP/godot-macos.zip" "$RUNNER_TEMP/godot-app"
-          APP_PATH="$(find "$RUNNER_TEMP/godot-app" -maxdepth 3 -name Godot.app -print -quit)"
+          APP_PATH="$(find "$RUNNER_TEMP/godot-app" -maxdepth 4 -name Godot.app -print -quit)"
           test -n "$APP_PATH"
           cp -R "$APP_PATH" /Applications/Godot.app
           GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
           test -x "$GODOT_BIN"
-          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
           "$GODOT_BIN" --version
-          mkdir -p "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
+          echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
+          TEMPLATE_DIR="$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
+          mkdir -p "$TEMPLATE_DIR" "$RUNNER_TEMP/godot-templates"
           curl --fail --location --retry 3 \
             https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz \
             -o "$RUNNER_TEMP/godot-templates.tpz"
-          mkdir -p "$RUNNER_TEMP/godot-templates"
           unzip -q "$RUNNER_TEMP/godot-templates.tpz" -d "$RUNNER_TEMP/godot-templates"
-          cp -a "$RUNNER_TEMP/godot-templates/templates/." "$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable/"
+          cp -a "$RUNNER_TEMP/godot-templates/templates/." "$TEMPLATE_DIR/"
 
       - name: Import and validate shared Godot project
         run: |
@@ -101,8 +131,19 @@ jobs:
           import os
           path = Path("game/export_presets.cfg")
           text = path.read_text()
-          text = text.replace('application/app_store_team_id=""', f'application/app_store_team_id="{os.environ["IOS_TEAM_ID"]}"')
-          text = text.replace('application/provisioning_profile_uuid_release=""', f'application/provisioning_profile_uuid_release="{os.environ["IOS_PROFILE_UUID"]}"')
+          replacements = {
+              'application/app_store_team_id=""': f'application/app_store_team_id="{os.environ["IOS_TEAM_ID"]}"',
+              'application/provisioning_profile_uuid_release=""': f'application/provisioning_profile_uuid_release="{os.environ["IOS_PROFILE_UUID"]}"',
+              'application/provisioning_profile_uuid_debug=""': f'application/provisioning_profile_uuid_debug="{os.environ["IOS_PROFILE_UUID"]}"',
+              'application/code_sign_identity_release=""': f'application/code_sign_identity_release="{os.environ["IOS_SIGN_IDENTITY"]}"',
+              'application/code_sign_identity_debug=""': f'application/code_sign_identity_debug="{os.environ["IOS_SIGN_IDENTITY"]}"',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Expected export preset setting not found: {old}")
+              text = text.replace(old, new, 1)
+          release_method = "3" if os.environ["IOS_PROFILE_DEV"].lower() == "true" else "1"
+          text = text.replace("application/export_method_release=0", f"application/export_method_release={release_method}", 1)
           path.write_text(text)
           PY
           mkdir -p game/build
@@ -124,10 +165,3 @@ jobs:
           if [ -n "${KEYCHAIN_PATH:-}" ]; then
             security delete-keychain "$KEYCHAIN_PATH" || true
           fi
-
-  authorization-not-selected:
-    if: inputs.authorize_ipa_export != true
-    runs-on: ubuntu-latest
-    steps:
-      - name: Explain safety gate
-        run: echo "IPA export was not authorized. No iOS export or signing was performed."
