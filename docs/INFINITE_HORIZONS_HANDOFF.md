@@ -515,3 +515,11 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Added per-foot downward ground probes with smoothed ankle-height correction on grounded terrain, helping feet adapt to small road/sidewalk height differences.
 - Extra improvements: ray queries exclude the player body, offsets are clamped, and corrections are smoothed to avoid abrupt ankle snapping.
 - Limitations: this is procedural facial motion and ankle-height adaptation, not an authored high-detail face, blendshape rig or full two-bone foot-locking IK. A real skinned human asset, Skeleton3D skin weights and authored animation clips remain outstanding. Phase 6 remains incomplete; consolidated validation is pending.
+
+## Progress entry — 2026-11-15
+### Phase 6 — Head articulation and foot-contact integration — Source committed; validation pending
+- Added a dedicated head/neck pivot and moved the existing head, hair, eyes and facial details beneath it while preserving their world-space placement.
+- Added smoothed head-look yaw from movement direction and restrained pitch/idle micro-motion, so the face no longer remains rigidly fixed while the body turns.
+- Fixed a foot-contact integration issue: the locomotion animation previously overwrote ankle offsets calculated by the ground probes in the same physics frame. Ground adaptation is now blended into stance-phase ankle height and fades during foot swing.
+- Extra improvements: pupil gaze coordinates now use the head pivot's local space; head movement remains damped to avoid abrupt snapping.
+- Limitations: the character is still assembled from procedural primitive meshes. No authored high-detail human asset, deforming skin weights, full Skeleton3D rig, authored animation clips or full two-bone foot-locking IK has been added. Phase 6 remains incomplete; consolidated validation is pending.
