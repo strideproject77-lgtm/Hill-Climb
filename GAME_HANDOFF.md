@@ -225,6 +225,6 @@ Track the vertical playable slice separately from total planned content. Count o
 - Replaced the four directional walk buttons with the joystick; the joystick is hidden during driving and restored on foot.
 - Added layered pelvis/abdomen/chest silhouette shaping and subtle upper-body counter-rotation.
 - Fixed shoe hierarchy so toe, lace and sole details follow the ankle pivots instead of remaining static at the character root.
-- Extra improvements: desktop mouse joystick emulation and smoother analog input around the center.
+- Extra improvements: desktop mouse joystick emulation, smoother analog input around the center, and movement/sprint reset when entering or exiting the vehicle.
 - Limitation: character remains procedural geometry; authored photorealistic model, weighted Skeleton3D, mocap-quality clips and true two-bone foot IK are not implemented. No authored character asset was available in the repository asset tree.
 - No tests/workflows were run; consolidated validation remains pending. No IPA build/sign/export was performed.
