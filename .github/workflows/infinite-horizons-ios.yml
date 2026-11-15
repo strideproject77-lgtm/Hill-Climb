@@ -60,6 +60,12 @@ jobs:
       - name: Export unsigned iOS Xcode project
         run: |
           set -euo pipefail
+          # Ensure Godot invokes Apple's Xcode toolchain (including codesign)
+          # rather than a standalone Command Line Tools selection.
+          xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcode-select -p
+          xcodebuild -version
+          codesign --version
           python3 - <<'PY'
           from pathlib import Path
           path = Path("game/export_presets.cfg")
@@ -91,27 +97,13 @@ jobs:
                   text = text.replace(old_identity, new_identity, 1)
               elif new_identity not in text:
                   raise SystemExit("Could not configure ad-hoc identity for " + key)
-          # Godot signs embedded iOS dynamic libraries during export. An
-          # ad-hoc identity lets that packaging step complete without Apple
-          # certificates or a provisioning profile. Xcode's final app build
-          # remains explicitly unsigned below.
-          for key in (
-              "application/code_sign_identity_debug",
-              "application/code_sign_identity_release",
-          ):
-              old_identity = key + '=""'
-              new_identity = key + '="-"'
-              if old_identity in text:
-                  text = text.replace(old_identity, new_identity, 1)
-              elif new_identity not in text:
-                  raise SystemExit(f"Could not locate {key} in iOS preset")
           path.write_text(text)
           PY
           rm -rf game/build/ios-project
           mkdir -p game/build
           # Godot resolves export destinations relative to the project root
           # (game/), not the repository root.
-          "$GODOT_BIN" --headless --path game --export-release "iOS" build/ios-project
+          "$GODOT_BIN" --verbose --headless --path game --export-release "iOS" build/ios-project
           PROJECT="$(find game/build/ios-project -maxdepth 4 -name '*.xcodeproj' -print -quit)"
           test -n "$PROJECT"
           echo "IOS_XCODE_PROJECT=$PROJECT" >> "$GITHUB_ENV"
