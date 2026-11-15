@@ -13,6 +13,7 @@ var control_buttons: Dictionary = {}
 var driving := false
 var hud_root: Control
 var camera_distance := 6.8
+var held_controls: Dictionary = {}
 
 func _ready() -> void:
 	_setup_environment()
@@ -91,7 +92,7 @@ func _setup_camera() -> void:
 func _update_player_camera(delta: float) -> void:
 	var target := player.global_position + Vector3.UP * 1.42
 	var forward := -player.global_transform.basis.z
-	var desired := target + forward * 6.4 + Vector3.UP * 2.65
+	var desired := target - forward * 6.4 + Vector3.UP * 2.65
 	follow_camera.global_position = follow_camera.global_position.lerp(desired, 1.0 - exp(-delta * 6.5))
 	follow_camera.look_at(target + forward * 1.8, Vector3.UP)
 
@@ -188,6 +189,7 @@ func _update_mode_ui() -> void:
 	mode_label.text = "CLOCK TOWER • " + ("DRIVING TEST" if driving else "ON-FOOT TEST")
 
 func _on_button_down(name: String) -> void:
+	held_controls[name] = true
 	match name:
 		"forward","back","left","right","sprint":
 			_update_player_input()
@@ -198,6 +200,7 @@ func _on_button_down(name: String) -> void:
 		"interact": _toggle_vehicle()
 
 func _on_button_up(name: String) -> void:
+	held_controls[name] = false
 	match name:
 		"forward","back","left","right","sprint":
 			_update_player_input()
@@ -206,9 +209,9 @@ func _on_button_up(name: String) -> void:
 		"car_left","car_right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,0.0)
 
 func _update_player_input() -> void:
-	var x := float(control_buttons["right"].button_pressed) - float(control_buttons["left"].button_pressed)
-	var y := float(control_buttons["back"].button_pressed) - float(control_buttons["forward"].button_pressed)
-	player.set_move_input(Vector2(x,y),control_buttons["sprint"].button_pressed)
+	var x := float(bool(held_controls.get("right",false))) - float(bool(held_controls.get("left",false)))
+	var y := float(bool(held_controls.get("back",false))) - float(bool(held_controls.get("forward",false)))
+	player.set_move_input(Vector2(x,y),bool(held_controls.get("sprint",false)))
 
 func _toggle_vehicle() -> void:
 	if not driving:
@@ -223,6 +226,8 @@ func _toggle_vehicle() -> void:
 	else:
 		driving = false
 		vehicle.set_drive_controls(0.0,1.0,0.0)
+		vehicle.linear_velocity = Vector3.ZERO
+		vehicle.angular_velocity = Vector3.ZERO
 		player.global_position = vehicle.global_position + vehicle.global_transform.basis.x * 2.4 + Vector3.UP * 0.2
 		player.velocity = Vector3.ZERO
 		player.visible = true
