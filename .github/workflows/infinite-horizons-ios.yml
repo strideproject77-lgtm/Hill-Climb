@@ -102,9 +102,37 @@ jobs:
           PY
           rm -rf game/build/ios-project
           mkdir -p game/build
+          # Capture codesign stderr through stdout: Godot captures the child
+          # process stdout but discards its stderr during embedded dylib signing.
+          mkdir -p "$RUNNER_TEMP/stride-codesign-bin"
+          cat > "$RUNNER_TEMP/stride-codesign-bin/codesign" <<'SH'
+          #!/bin/sh
+          printf 'STRIDE_CODESIGN_CALL'
+          for arg in "$@"; do printf ' <%s>' "$arg"; done
+          printf '\\n'
+          /usr/bin/codesign "$@" 2>&1
+          exit $?
+          SH
+          chmod +x "$RUNNER_TEMP/stride-codesign-bin/codesign"
+          export PATH="$RUNNER_TEMP/stride-codesign-bin:$PATH"
+          echo "Godot iOS dylibs input:"
+          find game/godot_ios/dylibs -maxdepth 4 -print 2>/dev/null || true
           # Godot resolves export destinations relative to the project root
-          # (game/), not the repository root.
-          "$GODOT_BIN" --verbose --headless --path game --export-release "iOS" build/ios-project
+          # (game/), not the repository root. Preserve its full editor log.
+          set +e
+          "$GODOT_BIN" --verbose --log-file "$RUNNER_TEMP/godot-ios-export.log" --headless --path game --export-release "iOS" build/ios-project
+          EXPORT_STATUS=$?
+          set -e
+          echo "Godot export exit code: $EXPORT_STATUS"
+          echo "Godot generated files (if any):"
+          find game/build/ios-project -maxdepth 5 -print 2>/dev/null | head -250 || true
+          if [ -f "$RUNNER_TEMP/godot-ios-export.log" ]; then
+            echo "===== GODOT EXPORT LOG (last 500 lines) ====="
+            tail -500 "$RUNNER_TEMP/godot-ios-export.log"
+          fi
+          if [ "$EXPORT_STATUS" -ne 0 ]; then
+            exit "$EXPORT_STATUS"
+          fi
           PROJECT="$(find game/build/ios-project -maxdepth 4 -name '*.xcodeproj' -print -quit)"
           test -n "$PROJECT"
           echo "IOS_XCODE_PROJECT=$PROJECT" >> "$GITHUB_ENV"
