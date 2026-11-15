@@ -9,4 +9,4 @@ INFINITE HORIZONS uses one Godot project and one shared gameplay/source tree for
 - The iOS workflow's authorization input defaults to false. A run without explicit authorization performs no export.
 - Platform capability checks belong in `IHPlatformProfile`; keep gameplay shared and isolate platform-specific settings/input at the edges.
 
-The iOS workflow is prepared but requires a valid Apple Distribution certificate and matching App Store provisioning profile, plus validation of the Godot iOS export preset against the configured Apple account. A successful Android build does not prove iOS signing or device compatibility.
+The iOS workflow is prepared but requires a valid Apple Distribution certificate and matching App Store provisioning profile in the listed secrets. The workflow injects the team ID and profile UUID at runtime; signing materials are never written into the repository. A successful Android build does not prove iOS signing or device compatibility.
