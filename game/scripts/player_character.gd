@@ -7,6 +7,7 @@ var walk_speed := 4.4
 var run_speed := 6.8
 var gravity := 19.0
 var visual_root: Node3D
+var head_pivot: Node3D
 var left_arm: Node3D
 var right_arm: Node3D
 var left_leg: Node3D
@@ -356,6 +357,17 @@ func _build_character() -> void:
 		var thumb_part := _mesh(wrist, thumb, Vector3(side * 0.085, -0.015, -0.015), skin)
 		thumb_part.rotation.z = -side * 0.65
 
+	# Give the complete head/face assembly its own pivot while preserving its world pose.
+	head_pivot = Node3D.new()
+	head_pivot.name = "HeadNeckPivot"
+	head_pivot.position = Vector3(0.0, 1.76, 0.0)
+	visual_root.add_child(head_pivot)
+	for part in visual_root.get_children():
+		if part == head_pivot or not (part is Node3D):
+			continue
+		if part.position.y >= 1.84:
+			part.reparent(head_pivot, true)
+
 
 func _update_foot_grounding(delta: float) -> void:
 	# Lightweight ground adaptation for uneven streets; this is not full two-bone IK.
@@ -400,10 +412,10 @@ func _animate_face(delta: float, active_gait: float) -> void:
 	var gaze_y := clampf(movement_intent_world.dot(global_transform.basis.z), -1.0, 1.0) * 0.006
 	if left_pupil:
 		left_pupil.position.x = -0.078 + gaze_x
-		left_pupil.position.y = 2.014 + gaze_y
+		left_pupil.position.y = 0.254 + gaze_y
 	if right_pupil:
 		right_pupil.position.x = 0.078 + gaze_x
-		right_pupil.position.y = 2.014 + gaze_y
+		right_pupil.position.y = 0.254 + gaze_y
 	if mouth_detail:
 		mouth_detail.scale.x = 1.0 + sin(facial_clock * 0.8) * 0.025 * (1.0 - active_gait)
 
@@ -438,10 +450,10 @@ func _animate_character(delta: float) -> void:
 	if right_knee:
 		right_knee.rotation.x = opposite_knee_bend
 	if left_ankle:
-		left_ankle.position.y = -0.31 + left_lift
+		left_ankle.position.y = -0.31 + left_lift + left_foot_ik_offset * (1.0 - clampf(left_lift / 0.095, 0.0, 1.0))
 		left_ankle.rotation.x = -swing * 0.48 - knee_bend * 0.12 + left_toe_roll
 	if right_ankle:
-		right_ankle.position.y = -0.31 + right_lift
+		right_ankle.position.y = -0.31 + right_lift + right_foot_ik_offset * (1.0 - clampf(right_lift / 0.095, 0.0, 1.0))
 		right_ankle.rotation.x = swing * 0.48 - opposite_knee_bend * 0.12 + right_toe_roll
 	if left_arm:
 		left_arm.rotation.x = -swing * 0.82
@@ -461,6 +473,11 @@ func _animate_character(delta: float) -> void:
 		right_wrist.rotation.x = 0.10 - swing * 0.12
 		right_wrist.rotation.z = 0.035 * active_gait
 	_animate_face(delta, active_gait)
+	if head_pivot:
+		var head_look_yaw := clampf(movement_intent_world.dot(global_transform.basis.x), -1.0, 1.0) * 0.12
+		var head_look_pitch := clampf(locomotion_accel, 0.0, 1.0) * -0.025
+		head_pivot.rotation.y = lerp_angle(head_pivot.rotation.y, head_look_yaw, 1.0 - exp(-delta * 5.0))
+		head_pivot.rotation.x = lerpf(head_pivot.rotation.x, head_look_pitch + sin(idle_clock * 0.7) * 0.012 * (1.0 - active_gait), 1.0 - exp(-delta * 4.0))
 	if visual_root:
 		var idle_sway := sin(idle_clock * 1.15) * 0.006 * (1.0 - active_gait)
 		var turn_lean := -turn_weight * lerpf(0.025, 0.055, run_blend)
