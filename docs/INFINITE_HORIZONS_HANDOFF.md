@@ -551,3 +551,15 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Extra improvements: probe offsets follow the character's world orientation; normals are normalized and flipped to the upward hemisphere before averaging; per-foot smoothing remains independent.
 - Scope boundary: this improves multi-point procedural foot contact only. It is not a planted-foot lock, a two-bone IK solver, or a replacement for an authored weighted character rig.
 - Remaining Phase 6 work: proper authored 3D human mesh and weighted Skeleton3D, animation clips/blending, full foot-locking IK, interaction prompts/doors and reliable vehicle transition polish. Run the planned consolidated Godot parse/startup and Android validation once the phase batch is ready. No IPA build/sign/export was performed.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Analog mobile movement and character presentation refinement — Source implemented; validation pending
+- Replaced the four separate on-foot directional buttons with a custom analog virtual joystick in the bottom-left safe play area. The pad has a visible outer ring, inner guide ring, movable thumb knob, dead-zone handling, normalized diagonal input and release-to-neutral behavior.
+- Kept sprint as a separate reachable control and preserved the vehicle-specific accelerator, brake and steering controls. The on-foot joystick hides while driving and reappears after exiting.
+- Refined the procedural character silhouette with layered pelvis, abdomen and chest forms to reduce the previous single-cylinder torso appearance.
+- Fixed a hierarchy defect where shoe toe, laces and sole details were parented to the character root and therefore did not follow ankle lift/rotation. All shoe details now live under each ankle pivot and animate with the foot.
+- Added subtle upper-body counter-rotation to improve the sense of balance and momentum during the gait cycle.
+- Extra improvements: mouse emulation for desktop joystick interaction, a small analog dead zone to prevent drift, and consistent release-to-center behavior for touch/mouse.
+- Limitations: the character remains procedural primitive geometry. These refinements do not create a photorealistic authored human mesh, weighted Skeleton3D, mocap-quality animation or true two-bone foot IK. No suitable authored character asset is currently present in the game asset tree.
+- Remaining: integrate a properly licensed high-detail human model and weighted rig, authored walk/run/idle clips, full planted-foot IK, interaction prompts/doors, animation retargeting, and consolidated Godot/Android plus physical-device validation. Phase 6 remains incomplete. No tests/workflows were run in this batch; no IPA build/sign/export was performed.
