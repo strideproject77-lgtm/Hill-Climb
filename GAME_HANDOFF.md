@@ -31,13 +31,13 @@ Track the vertical playable slice separately from total planned content. Count o
 1. **3D World Foundation — Source implemented; APK workflow #47 passed; device inspection pending**
 2. **Vehicle & Driving Foundation — Source implemented; Android workflow #51 passed; device inspection pending**
    - Four-wheel VehicleBody, front steering/rear traction, suspension, throttle, brake, keyboard controls, generated sedan exterior, chase camera, mobile touch HUD, terrain and road collision.
-3. **Sialkot Geospatial Base Map — Compact city blockout implemented; validation pending**
+3. **Sialkot Geospatial Base Map — Clock Tower / Saddar Bazaar test district source implemented; validation pending**
    - First playable scope: a compact GTA-style Sialkot-inspired layout anchored by Clock Tower / Saddar Bazaar, Cantonment side and the Mehrajke-direction corridor. Distances may be compressed and streets simplified/repositioned for gameplay; villages and distant outer areas deferred.
 4. **Sialkot Landmarks & Shopfronts — Planned**
    - Iqbal Manzil, Clock Tower/Saddar Bazaar, Holy Trinity Cathedral, Murray College, mapped markets and public businesses; varied ordinary shopfronts.
 5. **City Streaming & Performance — Planned**
    - Tile streaming, LOD, culling, simplified collision and memory budgets.
-6. **Player Character & Interaction — Planned**
+6. **Player Character & Interaction — Third-person player, camera, touch movement and vehicle switching source implemented; validation pending**
    - Third-person character, animation, enter/exit vehicle and interactions.
 7. **Traffic, Pedestrians & Police AI — Planned**
    - Traffic navigation, pedestrian routines, traffic rules and pursuit simulation.
@@ -96,3 +96,15 @@ Track the vertical playable slice separately from total planned content. Count o
 - Official references identify key radial roads and heritage landmarks.
 - Remaining: acquire/import the municipal OSM geometry, verify city boundary and coverage, then build landmarks and shopfronts from public references.
 - The current terrain test area is not Sialkot and must not be described as a 1:1 city map. Godot's built-in VehicleBody3D is a first drivable baseline; its documented limitations mean a custom suspension/tyre solver may be needed for higher-fidelity handling.
+
+
+## Progress entry — 2026-11-15
+### Clock Tower playable testing slice — Source implemented; validation pending
+- Narrowed the temporary playable map to an approximately 860 m square Clock Tower / Saddar Bazaar area.
+- Added a stepped stone Clock Tower landmark with four clock dials, traffic island, cross streets, smaller bazaar lanes, shopfront facades, awnings, signs, upper windows, streetlights and static building/tower collision.
+- Added a procedural human player character with third-person movement, walk/run speeds, basic limb animation and a smoothed over-the-shoulder camera.
+- Integrated the existing sedan with a separate driving camera and on-foot / vehicle mode switch. Added proximity-based enter/exit and mobile touch controls for walking, sprinting, driving, steering and braking.
+- Improved the field-test HUD with current mode and district identity.
+- Extra improvements: collision is disabled for the hidden player while inside the car; player and vehicle spawn near each other for immediate testing; the map scope is kept deliberately small to focus on landmark and character quality.
+- Limitations: character is procedural and not yet a fully rigged production model; tower geometry/dial orientation and local shopfront references need visual review; no pedestrians, traffic, interiors or minimap yet.
+- Remaining: one consolidated Godot + Android ARM64 APK validation and real-device inspection of visual fidelity, camera, movement, vehicle entry/exit, wheel contact and touch layout. Phase 3 and Phase 6 remain incomplete.
