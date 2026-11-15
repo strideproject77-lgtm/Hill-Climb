@@ -453,3 +453,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - No pedestrians, traffic simulation, interiors, minimap or mission flow in this test slice yet.
 - Run one consolidated Godot parse/startup + Android ARM64 APK validation; then inspect camera framing, character movement, car entry/exit, wheel contact and touch layout on device.
 - Phase 3 and Phase 6 remain incomplete; do not mark either Completed until the remaining validation and full scope gates pass.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Player character visual-detail pass — Source committed; validation pending
+- Expanded the existing procedural player from a basic capsule silhouette with a defined face: nose bridge/tip, mouth, eyebrows, inner ears, hairline and rear hair silhouette.
+- Added tailored jacket lapels, shoulder shaping, pocket flaps/buttons, belt and buckle, trouser fly/knee panels, shoe toe/laces, and individual finger/thumb geometry.
+- Added subtle movement sway and reduced the previous exaggerated vertical bob; added a small idle breathing scale variation.
+- Extra improvements: better facial readability at third-person camera distance and more coherent clothing silhouette without external asset dependencies.
+- Remaining: replace procedural primitive construction with a properly authored, rigged high-detail human mesh; add skeletal walk/run/idle animations, foot planting, facial animation and device-level visual/performance validation. Current work is a detail improvement, not a photorealistic/GTA V-quality character. Phase 6 is not complete.
