@@ -5,3 +5,5 @@ Unsigned IPA pipeline adapted from Stride-Official workflow. Trigger 2026-11-15T
 Unsigned IPA retry after temporary Godot Team ID export fix.
 Retry after correcting project-relative Godot export destination.
 Retry with ad-hoc dylib identity for unsigned Xcode export — 2026-11-15T16:00:00+05:00
+
+Retry after fixing Godot embedded dylib ad-hoc signing — 2026-11-15T16:00:00+05:00
