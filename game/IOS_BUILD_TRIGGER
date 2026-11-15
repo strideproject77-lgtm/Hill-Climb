@@ -10,3 +10,4 @@ Retry after fixing Godot embedded dylib ad-hoc signing — 2026-11-15T16:00:00+0
 Verbose iOS export diagnostics and explicit Xcode toolchain selection — 2026-11-15T11:45:00+05:00
 Fix xcode-select root permission using sudo — 2026-11-15T12:05:00+05:00
 Fix macOS codesign availability check; resume unsigned IPA export — 2026-11-15T16:15:00+05:00
+Retry unsigned iOS export with captured Godot editor log and codesign stderr — 2026-11-15T16:30:00+05:00
