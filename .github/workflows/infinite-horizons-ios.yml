@@ -65,7 +65,14 @@ jobs:
       - name: Install Godot 4.4.1 and iOS export templates
         run: |
           set -euo pipefail
-          brew install --cask godot
+          curl --fail --location --retry 3 \\
+            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip \\
+            -o "$RUNNER_TEMP/godot-macos.zip"
+          mkdir -p "$RUNNER_TEMP/godot-app"
+          ditto -x -k "$RUNNER_TEMP/godot-macos.zip" "$RUNNER_TEMP/godot-app"
+          APP_PATH="$(find "$RUNNER_TEMP/godot-app" -maxdepth 3 -name Godot.app -print -quit)"
+          test -n "$APP_PATH"
+          cp -R "$APP_PATH" /Applications/Godot.app
           GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
           test -x "$GODOT_BIN"
           echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
