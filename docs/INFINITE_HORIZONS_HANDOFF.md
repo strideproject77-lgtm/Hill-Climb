@@ -523,3 +523,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Fixed a foot-contact integration issue: the locomotion animation previously overwrote ankle offsets calculated by the ground probes in the same physics frame. Ground adaptation is now blended into stance-phase ankle height and fades during foot swing.
 - Extra improvements: pupil gaze coordinates now use the head pivot's local space; head movement remains damped to avoid abrupt snapping.
 - Limitations: the character is still assembled from procedural primitive meshes. No authored high-detail human asset, deforming skin weights, full Skeleton3D rig, authored animation clips or full two-bone foot-locking IK has been added. Phase 6 remains incomplete; consolidated validation is pending.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Slope-aware foot contact polish — Source committed; validation pending
+- Extended each foot's ground probe to read the contacted surface normal and convert it into character-local space.
+- Added smoothed, clamped pitch and roll adaptation so planted feet can align more naturally with small road/sidewalk slopes instead of correcting height alone.
+- Ground tilt fades during the swing phase and is combined with the existing walk/run ankle motion; airborne/no-hit frames ease the target back toward neutral.
+- Extra improvements: separate left/right contact state, bounded angular response to reduce sudden rotations, and preserved the existing low-cost raycast approach for mobile.
+- Limitations: this is slope-aware procedural contact, not a true foot-locking or two-bone IK solver. A high-detail authored human mesh, weighted Skeleton3D rig, authored animation clips, full facial/hand posing and consolidated Godot/Android/device validation remain outstanding. Phase 6 remains incomplete.
