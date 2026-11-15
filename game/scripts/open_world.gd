@@ -12,7 +12,7 @@ var mode_label: Label
 var control_buttons: Dictionary = {}
 var driving := false
 var hud_root: Control
-var camera_distance := 6.8
+var camera_distance := 7.8
 var held_controls: Dictionary = {}
 
 func _ready() -> void:
@@ -97,7 +97,7 @@ func _update_player_camera(delta: float) -> void:
 	follow_camera.look_at(target + forward * 1.8, Vector3.UP)
 
 func _update_vehicle_camera(delta: float) -> void:
-	var behind := -vehicle.global_transform.basis.z.normalized()
+	var behind := vehicle.global_transform.basis.z.normalized()
 	var target := vehicle.global_position + behind * 8.6 + Vector3.UP * 4.0
 	follow_camera.global_position = follow_camera.global_position.lerp(target, 1.0 - exp(-delta * 4.6))
 	follow_camera.look_at(vehicle.global_position + Vector3.UP * 1.0 + vehicle.linear_velocity * 0.055, Vector3.UP)
@@ -146,10 +146,10 @@ func _setup_mobile_hud() -> void:
 	_add_button("MOVE LEFT","◀",Vector2(112,-112),Vector2(192,-44),false,"left")
 	_add_button("MOVE RIGHT","▶",Vector2(112,-198),Vector2(192,-130),false,"right")
 	_add_button("SPRINT","RUN",Vector2(208,-94),Vector2(292,-28),false,"sprint")
-	_add_button("VEHICLE GAS","DRIVE",Vector2(-190,-142),Vector2(-104,-72),true,"throttle")
-	_add_button("VEHICLE BRAKE","BRAKE",Vector2(-96,-104),Vector2(-18,-34),true,"brake")
-	_add_button("VEHICLE LEFT","◀",Vector2(-190,-62),Vector2(-112,8),true,"car_left")
-	_add_button("VEHICLE RIGHT","▶",Vector2(-102,-62),Vector2(-24,8),true,"car_right")
+	_add_button("VEHICLE GAS","ACCELERATE",Vector2(-142,-164),Vector2(-24,-62),true,"throttle")
+	_add_button("VEHICLE BRAKE","BRAKE",Vector2(-142,-54),Vector2(-24,48),true,"brake")
+	_add_button("VEHICLE LEFT","◀",Vector2(24,-110),Vector2(112,-26),false,"car_left")
+	_add_button("VEHICLE RIGHT","▶",Vector2(120,-110),Vector2(208,-26),false,"car_right")
 	_add_button("ENTER OR EXIT","ENTER CAR",Vector2(-170,-220),Vector2(-22,-158),true,"interact")
 
 func _add_button(accessible_name: String, caption: String, top_left: Vector2, bottom_right: Vector2, right_side: bool, control_name: String) -> void:
@@ -193,10 +193,8 @@ func _on_button_down(name: String) -> void:
 	match name:
 		"forward","back","left","right","sprint":
 			_update_player_input()
-		"throttle": vehicle.set_drive_controls(1.0,vehicle.brake_input,vehicle.steer_input)
-		"brake": vehicle.set_drive_controls(vehicle.throttle_input,1.0,vehicle.steer_input)
-		"car_left": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,-1.0)
-		"car_right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,1.0)
+		"throttle","brake": _update_vehicle_input()
+		"car_left","car_right": _update_vehicle_input()
 		"interact": _toggle_vehicle()
 
 func _on_button_up(name: String) -> void:
@@ -204,9 +202,14 @@ func _on_button_up(name: String) -> void:
 	match name:
 		"forward","back","left","right","sprint":
 			_update_player_input()
-		"throttle": vehicle.set_drive_controls(0.0,vehicle.brake_input,vehicle.steer_input)
-		"brake": vehicle.set_drive_controls(vehicle.throttle_input,0.0,vehicle.steer_input)
-		"car_left","car_right": vehicle.set_drive_controls(vehicle.throttle_input,vehicle.brake_input,0.0)
+		"throttle","brake": _update_vehicle_input()
+		"car_left","car_right": _update_vehicle_input()
+
+func _update_vehicle_input() -> void:
+	var steer := float(bool(held_controls.get("car_right",false))) - float(bool(held_controls.get("car_left",false)))
+	var throttle := 1.0 if bool(held_controls.get("throttle",false)) else 0.0
+	var braking := 1.0 if bool(held_controls.get("brake",false)) else 0.0
+	vehicle.set_drive_controls(throttle,braking,steer)
 
 func _update_player_input() -> void:
 	var x := float(bool(held_controls.get("right",false))) - float(bool(held_controls.get("left",false)))
