@@ -164,6 +164,29 @@ func _build_character() -> void:
 	var zipper := BoxMesh.new()
 	zipper.size = Vector3(0.018, 0.47, 0.018)
 	_mesh(visual_root, zipper, Vector3(0, 1.24, -0.337), trim)
+	var eye_white := _material(Color("#eee7d8"), 0.42)
+	var eye_dark := _material(Color("#211b18"), 0.35)
+	for side in [-1.0, 1.0]:
+		var eye := SphereMesh.new()
+		eye.radius = 0.027
+		eye.height = 0.035
+		_mesh(visual_root, eye, Vector3(side * 0.078, 2.015, -0.211), eye_white)
+		var pupil := SphereMesh.new()
+		pupil.radius = 0.013
+		pupil.height = 0.018
+		_mesh(visual_root, pupil, Vector3(side * 0.078, 2.014, -0.235), eye_dark)
+		var pocket := BoxMesh.new()
+		pocket.size = Vector3(0.13, 0.15, 0.025)
+		_mesh(visual_root, pocket, Vector3(side * 0.19, 1.30, -0.337), shirt)
+		var cuff := CylinderMesh.new()
+		cuff.top_radius = 0.102
+		cuff.bottom_radius = 0.102
+		cuff.height = 0.09
+		_mesh(visual_root, cuff, Vector3(side * 0.39, 0.93, 0), trim)
+	for side in [-1.0, 1.0]:
+		var sole := BoxMesh.new()
+		sole.size = Vector3(0.24, 0.045, 0.40)
+		_mesh(visual_root, sole, Vector3(side * 0.17, 0.035, -0.075), trim)
 
 func _animate_character(delta: float) -> void:
 	anim_clock += delta * (7.8 if moving_amount > 0.1 else 2.0)
