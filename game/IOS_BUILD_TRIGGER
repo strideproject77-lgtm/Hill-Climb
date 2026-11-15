@@ -8,3 +8,4 @@ Retry with ad-hoc dylib identity for unsigned Xcode export — 2026-11-15T16:00:
 
 Retry after fixing Godot embedded dylib ad-hoc signing — 2026-11-15T16:00:00+05:00
 Verbose iOS export diagnostics and explicit Xcode toolchain selection — 2026-11-15T11:45:00+05:00
+Fix xcode-select root permission using sudo — 2026-11-15T12:05:00+05:00
