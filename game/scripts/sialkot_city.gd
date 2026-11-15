@@ -240,6 +240,14 @@ func _make_clock_tower() -> void:
 		hand.rotation.z = -0.55
 		hand.material_override = dark
 		tower.add_child(hand)
+	var tower_body := StaticBody3D.new()
+	var tower_collision := CollisionShape3D.new()
+	var tower_box := BoxShape3D.new()
+	tower_box.size = Vector3(15.5, 48.0, 15.5)
+	tower_collision.shape = tower_box
+	tower_collision.position.y = 24.0
+	tower_body.add_child(tower_collision)
+	tower.add_child(tower_body)
 	add_child(tower)
 
 func _make_street_details() -> void:
@@ -272,7 +280,7 @@ func _make_street_details() -> void:
 		bollard.mesh = cylinder
 		var angle := float(i) * TAU / 8.0
 		bollard.position = Vector3(cos(angle)*25.0,0.45,sin(angle)*25.0)
-		bollard.material_override = trim
+		bollard.material_override = stone
 		add_child(bollard)
 	var district := Label3D.new()
 	district.text = "SADDAR BAZAAR"
