@@ -11,6 +11,10 @@ var left_arm: Node3D
 var right_arm: Node3D
 var left_leg: Node3D
 var right_leg: Node3D
+var left_knee: Node3D
+var right_knee: Node3D
+var left_elbow: Node3D
+var right_elbow: Node3D
 var anim_clock := 0.0
 var moving_amount := 0.0
 
@@ -127,17 +131,23 @@ func _build_character() -> void:
 		upper.radius = 0.145
 		upper.height = 0.58
 		_mesh(leg, upper, Vector3(0, -0.17, 0), trousers)
+		var knee := Node3D.new()
+		knee.name = "KneeJoint"
+		knee.position = Vector3(0, -0.42, -0.015)
+		leg.add_child(knee)
 		var lower := CapsuleMesh.new()
 		lower.radius = 0.115
 		lower.height = 0.48
-		_mesh(leg, lower, Vector3(0, -0.55, -0.015), trousers)
+		_mesh(knee, lower, Vector3(0, -0.13, 0), trousers)
 		var foot := BoxMesh.new()
 		foot.size = Vector3(0.23, 0.13, 0.38)
-		_mesh(leg, foot, Vector3(0, -0.79, -0.075), shoes)
+		_mesh(knee, foot, Vector3(0, -0.36, -0.06), shoes)
 		if side < 0:
 			left_leg = leg
+			left_knee = knee
 		else:
 			right_leg = leg
+			right_knee = knee
 		var arm := Node3D.new()
 		arm.position = Vector3(side * 0.39, 1.52, 0)
 		visual_root.add_child(arm)
@@ -145,18 +155,24 @@ func _build_character() -> void:
 		sleeve.radius = 0.125
 		sleeve.height = 0.52
 		_mesh(arm, sleeve, Vector3(0, -0.22, 0), shirt)
+		var elbow := Node3D.new()
+		elbow.name = "ElbowJoint"
+		elbow.position = Vector3(0, -0.43, -0.01)
+		arm.add_child(elbow)
 		var forearm := CapsuleMesh.new()
 		forearm.radius = 0.095
 		forearm.height = 0.42
-		_mesh(arm, forearm, Vector3(0, -0.59, -0.015), skin)
+		_mesh(elbow, forearm, Vector3(0, -0.14, -0.015), skin)
 		var hand := SphereMesh.new()
 		hand.radius = 0.095
 		hand.height = 0.16
-		_mesh(arm, hand, Vector3(0, -0.84, -0.02), skin)
+		_mesh(elbow, hand, Vector3(0, -0.38, -0.02), skin)
 		if side < 0:
 			left_arm = arm
+			left_elbow = elbow
 		else:
 			right_arm = arm
+			right_elbow = elbow
 	# Small collar and jacket zipper details improve silhouette readability.
 	var collar := BoxMesh.new()
 	collar.size = Vector3(0.22, 0.07, 0.12)
@@ -281,17 +297,32 @@ func _build_character() -> void:
 
 func _animate_character(delta: float) -> void:
 	anim_clock += delta * (7.8 if moving_amount > 0.1 else 2.0)
-	var swing := sin(anim_clock) * 0.48 * moving_amount
+	var gait := sin(anim_clock)
+	var opposite_gait := sin(anim_clock + PI)
+	var swing := gait * 0.52 * moving_amount
+	var knee_bend := maxf(0.0, cos(anim_clock)) * 0.62 * moving_amount
+	var opposite_knee_bend := maxf(0.0, cos(anim_clock + PI)) * 0.62 * moving_amount
 	if left_leg:
 		left_leg.rotation.x = swing
 	if right_leg:
 		right_leg.rotation.x = -swing
+	if left_knee:
+		left_knee.rotation.x = knee_bend
+	if right_knee:
+		right_knee.rotation.x = opposite_knee_bend
 	if left_arm:
-		left_arm.rotation.x = -swing * 0.72
+		left_arm.rotation.x = -swing * 0.82
+		left_arm.rotation.z = -0.035 * moving_amount
 	if right_arm:
-		right_arm.rotation.x = swing * 0.72
+		right_arm.rotation.x = swing * 0.82
+		right_arm.rotation.z = 0.035 * moving_amount
+	if left_elbow:
+		left_elbow.rotation.x = -0.12 - knee_bend * 0.30
+	if right_elbow:
+		right_elbow.rotation.x = -0.12 - opposite_knee_bend * 0.30
 	if visual_root:
-		visual_root.position.y = absf(sin(anim_clock * 2.0)) * 0.018 * moving_amount
-		visual_root.rotation.z = sin(anim_clock * 0.5) * 0.012 * moving_amount
+		visual_root.position.y = absf(gait) * 0.025 * moving_amount
+		visual_root.rotation.z = sin(anim_clock * 0.5) * 0.018 * moving_amount
+		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * moving_amount
 		var breath := 1.0 + sin(anim_clock * 1.7) * 0.003
 		visual_root.scale = Vector3(1.0, breath, 1.0)
