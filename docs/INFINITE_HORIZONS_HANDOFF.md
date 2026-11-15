@@ -471,3 +471,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Improved stride rhythm and reduced the old stiff, straight-leg walking appearance. Existing face, hair, clothing, hand and shoe detail remains in place.
 - Extra improvements: distinct left/right limb animation state, better foot/hand articulation and a more natural idle-to-walk transition using the existing movement blend.
 - Remaining: replace procedural primitives with a high-quality authored human mesh and a true Skeleton3D/skinned rig; add polished walk/run/idle animation clips, foot planting, turning, facial animation and device performance validation. This procedural pass is not photorealistic and Phase 6 remains incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Foot articulation and walk/run gait pass — Source committed; validation pending
+- Added independent ankle pivots and parented the primary foot meshes to them, enabling foot pitch and vertical lift during each stride.
+- Added alternating foot-lift timing, ankle counter-rotation and speed/sprint-aware walk/run cadence and stride amplitudes.
+- Added restrained turn lean from horizontal movement input and separate walk/run body bob tuning.
+- Extra improvements: idle motion is kept subtle, gait responds to actual horizontal speed, and the changes remain asset-free and mobile-conscious.
+- Remaining: precise foot planting/contact, high-quality authored human mesh, true Skeleton3D/skinned rig, polished walk/run/idle clips, facial animation and device-level performance/visual validation. This is still a procedural character, not photorealistic. Phase 6 remains incomplete.
