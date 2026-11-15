@@ -1,264 +1,284 @@
 extends Node3D
 
-## Compact, fictionalized Sialkot-inspired city layout.
-## Real locations guide the districts; roads are deliberately compressed and
-## rearranged for readable navigation and mobile gameplay, not 1:1 GIS accuracy.
-
-const WORLD_WIDTH := 2600.0
-const WORLD_DEPTH := 1900.0
+## Small, detailed Clock Tower / Saddar Bazaar gameplay test district.
+## Layout is intentionally compressed; it is not a survey-grade 1:1 reconstruction.
+const MAP_HALF := 430.0
 var rng := RandomNumberGenerator.new()
 var asphalt: StandardMaterial3D
-var lane_paint: StandardMaterial3D
-var sidewalk: StandardMaterial3D
-var plaza_mat: StandardMaterial3D
-var building_mats: Array[StandardMaterial3D] = []
+var lane: StandardMaterial3D
+var pavement: StandardMaterial3D
+var stone: StandardMaterial3D
+var facade_mats: Array[StandardMaterial3D] = []
 
 func _ready() -> void:
-	generate_city()
+	rng.seed = 20261115
+	_make_materials()
+	_make_ground()
+	_make_roads_and_squares()
+	_make_bazaar_blocks()
+	_make_clock_tower()
+	_make_street_details()
 
-func generate_city() -> void:
-	rng.seed = 731904
-	_setup_materials()
-	_build_ground()
-	_build_primary_roads()
-	_build_bazaar_grid()
-	_build_cantonment_grid()
-	_build_mehrajke_corridor()
-	_build_ring_connectors()
-	_build_city_blocks()
-	_build_landmarks()
-	_build_street_furniture()
+func _mat(color: Color, rough: float = 0.85, metallic: float = 0.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color
+	m.roughness = rough
+	m.metallic = metallic
+	return m
 
-func _setup_materials() -> void:
-	asphalt = _mat(Color("#292d31"), 0.94)
-	lane_paint = _mat(Color("#d9cba8"), 0.72)
-	sidewalk = _mat(Color("#77766f"), 0.88)
-	plaza_mat = _mat(Color("#8b8273"), 0.9)
-	for color in ["#b7a38a", "#9c8875", "#c2b8a3", "#887d70", "#a99c89", "#d0c1a7", "#777a78"]:
-		building_mats.append(_mat(Color(color), 0.92))
+func _make_materials() -> void:
+	asphalt = _mat(Color("#24282b"), 0.94)
+	lane = _mat(Color("#d9c9a7"), 0.72)
+	pavement = _mat(Color("#77746d"), 0.92)
+	stone = _mat(Color("#c6b18e"), 0.82)
+	for c in ["#bda98d", "#a98f75", "#c8bca6", "#927e6a", "#d0c1a6", "#8f9690", "#b7a38c", "#756e64"]:
+		facade_mats.append(_mat(Color(c), 0.9))
 
-func _mat(color: Color, rough: float) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = rough
-	return material
-
-func _build_ground() -> void:
+func _make_ground() -> void:
 	var ground := MeshInstance3D.new()
-	ground.name = "UrbanGround"
+	ground.name = "ClockTowerDistrictGround"
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(WORLD_WIDTH, WORLD_DEPTH)
+	plane.size = Vector2(MAP_HALF * 2.0, MAP_HALF * 2.0)
 	ground.mesh = plane
-	ground.position.y = -0.42
-	ground.material_override = _mat(Color("#55584d"), 1.0)
+	ground.position.y = -0.28
+	ground.material_override = _mat(Color("#77766a"), 1.0)
 	add_child(ground)
 	var body := StaticBody3D.new()
-	body.name = "CityGroundCollision"
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(WORLD_WIDTH, 0.8, WORLD_DEPTH)
-	collision.shape = shape
-	collision.position.y = -0.4
-	body.add_child(collision)
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(MAP_HALF * 2.0, 0.55, MAP_HALF * 2.0)
+	shape.shape = box
+	shape.position.y = -0.28
+	body.add_child(shape)
 	add_child(body)
 
-func _add_road(a: Vector3, b: Vector3, width: float, name: String, markings: bool = true) -> void:
-	var delta := b - a
-	var length := Vector2(delta.x, delta.z).length()
-	if length < 1.0:
-		return
+func _road(a: Vector3, b: Vector3, width: float, road_name: String, markings: bool = true) -> void:
+	var d := b - a
+	var length := Vector2(d.x, d.z).length()
 	var road := MeshInstance3D.new()
-	road.name = name
+	road.name = road_name
 	var mesh := BoxMesh.new()
-	mesh.size = Vector3(width, 0.12, length)
+	mesh.size = Vector3(width, 0.1, length)
 	road.mesh = mesh
 	road.position = (a + b) * 0.5
-	road.position.y = 0.015
-	road.rotation.y = atan2(delta.x, delta.z)
+	road.position.y = -0.015
+	road.rotation.y = atan2(d.x, d.z)
 	road.material_override = asphalt
 	add_child(road)
-	if markings and width >= 15.0:
-		var stripe := MeshInstance3D.new()
-		var stripe_mesh := BoxMesh.new()
-		stripe_mesh.size = Vector3(0.22, 0.035, maxf(2.0, length - 5.0))
-		stripe.mesh = stripe_mesh
-		stripe.position = road.position + Vector3(0, 0.085, 0)
-		stripe.rotation.y = road.rotation.y
-		stripe.material_override = lane_paint
-		add_child(stripe)
+	if markings and width > 12.0:
+		for side in [-1.0, 1.0]:
+			var edge := MeshInstance3D.new()
+			var stripe := BoxMesh.new()
+			stripe.size = Vector3(0.13, 0.025, maxf(2.0, length - 3.0))
+			edge.mesh = stripe
+			edge.position = road.position + Vector3(side * width * 0.43, 0.065, 0)
+			edge.rotation.y = road.rotation.y
+			edge.material_override = lane
+			add_child(edge)
 
-func _build_primary_roads() -> void:
-	# The central crossroads represents the Clock Tower / Saddar anchor.
-	_add_road(Vector3(-WORLD_WIDTH * 0.46, 0, 0), Vector3(WORLD_WIDTH * 0.46, 0, 0), 25.0, "KashmirStyleMainBoulevard")
-	_add_road(Vector3(0, 0, -WORLD_DEPTH * 0.43), Vector3(0, 0, WORLD_DEPTH * 0.43), 22.0, "JammuStyleNorthSouthBoulevard")
-	_add_road(Vector3(-850, 0, -390), Vector3(820, 0, 390), 17.0, "DiagonalCityConnector")
-	_add_road(Vector3(-780, 0, 390), Vector3(780, 0, -390), 17.0, "CrossCityConnector")
+func _make_roads_and_squares() -> void:
+	_road(Vector3(-MAP_HALF,0,0), Vector3(MAP_HALF,0,0), 18.0, "SaddarMainRoad")
+	_road(Vector3(0,0,-MAP_HALF), Vector3(0,0,MAP_HALF), 17.0, "ClockTowerApproach")
+	_road(Vector3(-MAP_HALF,0,-205), Vector3(MAP_HALF,0,-205), 10.0, "NorthBazaarStreet", false)
+	_road(Vector3(-MAP_HALF,0,205), Vector3(MAP_HALF,0,205), 10.0, "SouthBazaarStreet", false)
+	_road(Vector3(-205,0,-MAP_HALF), Vector3(-205,0,MAP_HALF), 10.0, "WestBazaarStreet", false)
+	_road(Vector3(205,0,-MAP_HALF), Vector3(205,0,MAP_HALF), 10.0, "EastBazaarStreet", false)
+	var square := MeshInstance3D.new()
+	square.name = "ClockTowerTrafficIsland"
+	var disc := CylinderMesh.new()
+	disc.top_radius = 22.0
+	disc.bottom_radius = 23.0
+	disc.height = 0.22
+	square.mesh = disc
+	square.position.y = 0.12
+	square.material_override = _mat(Color("#a99b85"), 0.9)
+	add_child(square)
+	# Four pedestrian refuge corners and a tiled public apron.
+	for angle in [0.0, PI * 0.5, PI, PI * 1.5]:
+		var curb := MeshInstance3D.new()
+		var curb_mesh := BoxMesh.new()
+		curb_mesh.size = Vector3(7.0, 0.18, 2.0)
+		curb.mesh = curb_mesh
+		curb.position = Vector3(cos(angle) * 29.0, 0.11, sin(angle) * 29.0)
+		curb.rotation.y = angle
+		curb.material_override = pavement
+		add_child(curb)
 
-func _build_bazaar_grid() -> void:
-	# Dense, narrow streets around the old-city / Saddar-inspired core.
-	for x in [-560.0, -455.0, -350.0, -245.0, -140.0, -35.0]:
-		_add_road(Vector3(x, 0, -430), Vector3(x + 18.0, 0, 430), 8.5, "SaddarLane")
-	for z in [-360.0, -270.0, -180.0, -90.0, 90.0, 180.0, 270.0, 360.0]:
-		_add_road(Vector3(-650, 0, z), Vector3(45, 0, z + 12.0), 8.0, "BazaarMarketStreet", false)
+func _make_bazaar_blocks() -> void:
+	for x in [-310.0, -205.0, -105.0, 105.0, 205.0, 310.0]:
+		for z in [-310.0, -205.0, -105.0, 105.0, 205.0, 310.0]:
+			if absf(x) < 75.0 or absf(z) < 75.0:
+				continue
+			var width := rng.randf_range(42.0, 66.0)
+			var depth := rng.randf_range(38.0, 58.0)
+			var height := rng.randf_range(10.0, 21.0)
+			_build_shop(Vector3(x + rng.randf_range(-8,8),0,z + rng.randf_range(-8,8)), Vector2(width,depth), height)
 
-func _build_cantonment_grid() -> void:
-	# More open, orderly streets and larger blocks on the Cantonment side.
-	for x in [190.0, 340.0, 490.0, 640.0, 790.0]:
-		_add_road(Vector3(x, 0, -610), Vector3(x, 0, 610), 13.0, "CantonmentAvenue")
-	for z in [-470.0, -310.0, -150.0, 150.0, 310.0, 470.0]:
-		_add_road(Vector3(100, 0, z), Vector3(930, 0, z), 12.0, "CantonmentCrossStreet", false)
-
-func _build_mehrajke_corridor() -> void:
-	# A long, legible arterial toward the future Mehrajke-side expansion.
-	_add_road(Vector3(300, 0, 185), Vector3(1190, 0, 250), 24.0, "MehrajkeDirectionArterial")
-	_add_road(Vector3(350, 0, 225), Vector3(1170, 0, 290), 5.0, "MehrajkeServiceLane", false)
-	for x in [540.0, 730.0, 920.0, 1080.0]:
-		_add_road(Vector3(x, 0, 120), Vector3(x + 12.0, 0, 420), 10.0, "CorridorConnector", false)
-
-func _build_ring_connectors() -> void:
-	# A compact loop makes district-to-district driving more interesting.
-	var points: Array[Vector3] = []
-	for i in range(17):
-		var angle := TAU * float(i) / 16.0
-		points.append(Vector3(cos(angle) * 520.0, 0, sin(angle) * 390.0))
-	for i in range(points.size() - 1):
-		_add_road(points[i], points[i + 1], 14.0, "CentralRingConnector")
-
-func _build_city_blocks() -> void:
-	# Bazaar: tight low-rise blocks.
-	for x in [-610.0, -505.0, -400.0, -295.0, -190.0, -85.0]:
-		for z in [-315.0, -225.0, -135.0, -45.0, 45.0, 135.0, 225.0, 315.0]:
-			_add_building(Vector3(x, 0, z), Vector2(58, 48), rng.randi_range(9, 19), "Bazaar")
-	# Cantonment: spaced plots and larger properties.
-	for x in [265.0, 415.0, 565.0, 715.0, 865.0]:
-		for z in [-390.0, -230.0, -70.0, 230.0, 390.0]:
-			_add_building(Vector3(x, 0, z), Vector2(78, 70), rng.randi_range(12, 27), "Cantonment")
-	# Corridor: mixed roadside commercial/residential clusters.
-	for x in [520.0, 680.0, 840.0, 1000.0, 1140.0]:
-		_add_building(Vector3(x, 0, 390), Vector2(82, 62), rng.randi_range(8, 21), "OuterCity")
-
-func _add_building(center: Vector3, footprint: Vector2, height: float, district: String) -> void:
+func _build_shop(at: Vector3, footprint: Vector2, height: float) -> void:
 	var root := Node3D.new()
-	root.name = district + "Building"
-	root.position = center
-	var body := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(footprint.x, height, footprint.y)
-	body.mesh = box
-	body.position.y = height * 0.5
-	body.material_override = building_mats[rng.randi_range(0, building_mats.size() - 1)]
-	root.add_child(body)
-	# Simple contrasting facade bands give the skyline depth without heavy assets.
-	for level in range(maxi(1, int(height / 4.0))):
-		var band := MeshInstance3D.new()
-		var band_mesh := BoxMesh.new()
-		band_mesh.size = Vector3(footprint.x * 0.82, 0.55, 0.08)
-		band.mesh = band_mesh
-		band.position = Vector3(0, 2.2 + float(level) * 3.2, -footprint.y * 0.5 - 0.045)
-		band.material_override = lane_paint
-		root.add_child(band)
+	root.name = "SaddarShopfront"
+	root.position = at
+	var base := MeshInstance3D.new()
+	var body := BoxMesh.new()
+	body.size = Vector3(footprint.x,height,footprint.y)
+	base.mesh = body
+	base.position.y = height * 0.5
+	var wall_mat: Material = facade_mats[rng.randi_range(0,facade_mats.size()-1)]
+	base.material_override = wall_mat
+	root.add_child(base)
+	var front_z := -footprint.y * 0.5 - 0.045
+	# Recessed-looking shop bay, shaded signboard, and upper-floor windows.
+	var shop_opening := MeshInstance3D.new()
+	var opening := BoxMesh.new()
+	opening.size = Vector3(footprint.x * 0.66, height * 0.36, 0.12)
+	shop_opening.mesh = opening
+	shop_opening.position = Vector3(0, height * 0.2, front_z)
+	shop_opening.material_override = _mat(Color("#343b3a"), 0.55)
+	root.add_child(shop_opening)
+	var sign := MeshInstance3D.new()
+	var sign_mesh := BoxMesh.new()
+	sign_mesh.size = Vector3(footprint.x * 0.72, 1.05, 0.34)
+	sign.mesh = sign_mesh
+	sign.position = Vector3(0, height * 0.43, front_z - 0.08)
+	sign.material_override = _mat(Color("#5c4532"), 0.7)
+	root.add_child(sign)
+	for side in [-1.0,1.0]:
+		var window := MeshInstance3D.new()
+		var glass := BoxMesh.new()
+		glass.size = Vector3(footprint.x * 0.25, 2.4, 0.09)
+		window.mesh = glass
+		window.position = Vector3(side * footprint.x * 0.28, height * 0.72, front_z)
+		window.material_override = _mat(Color("#344b53"), 0.2, 0.25)
+		root.add_child(window)
+	var awning := MeshInstance3D.new()
+	var awning_mesh := BoxMesh.new()
+	awning_mesh.size = Vector3(footprint.x * 0.78, 0.16, 2.2)
+	awning.mesh = awning_mesh
+	awning.position = Vector3(0, height * 0.38, front_z - 1.0)
+	awning.material_override = _mat(Color("#80613f"), 0.72)
+	root.add_child(awning)
+	var collision := StaticBody3D.new()
+	var collision_shape := CollisionShape3D.new()
+	var collision_box := BoxShape3D.new()
+	collision_box.size = Vector3(footprint.x,height,footprint.y)
+	collision_shape.shape = collision_box
+	collision_shape.position.y = height * 0.5
+	collision.add_child(collision_shape)
+	root.add_child(collision)
 	add_child(root)
 
-func _build_landmarks() -> void:
-	_add_plaza(Vector3.ZERO, Vector2(100, 100), "ClockTowerSaddarPlaza")
-	_build_clock_tower()
-	_build_gate(Vector3(430, 0, -20), "CantonmentGate")
-	_add_wayfinding_marker(Vector3(1040, 0, 245), "MEHRAJKE ROAD")
-	_add_wayfinding_marker(Vector3(-430, 0, 475), "SADDAR BAZAAR")
-
-func _add_plaza(center: Vector3, size: Vector2, name: String) -> void:
-	var plaza := MeshInstance3D.new()
-	plaza.name = name
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(size.x, 0.16, size.y)
-	plaza.mesh = mesh
-	plaza.position = center + Vector3(0, 0.09, 0)
-	plaza.material_override = plaza_mat
-	add_child(plaza)
-
-func _build_clock_tower() -> void:
-	var tower := Node3D.new()
-	tower.name = "ClockTowerLandmark"
-	tower.position = Vector3(0, 0, 0)
-	var stone := _mat(Color("#c6b49a"), 0.82)
-	var dark := _mat(Color("#29343b"), 0.5)
-	_add_tower_part(tower, Vector3(15, 20, 15), Vector3(0, 10, 0), stone)
-	_add_tower_part(tower, Vector3(10, 12, 10), Vector3(0, 26, 0), stone)
-	_add_tower_part(tower, Vector3(7, 5, 7), Vector3(0, 34.5, 0), dark)
-	_add_tower_part(tower, Vector3(4, 8, 4), Vector3(0, 41, 0), stone)
-	for side in [Vector3(0, 26, -5.1), Vector3(0, 26, 5.1), Vector3(-5.1, 26, 0), Vector3(5.1, 26, 0)]:
-		_add_tower_part(tower, Vector3(3.4, 3.4, 0.18) if absf(side.z) > 0 else Vector3(0.18, 3.4, 3.4), side, dark)
-	add_child(tower)
-
-func _add_tower_part(parent: Node3D, size: Vector3, at: Vector3, material: Material) -> void:
-	var part := MeshInstance3D.new()
+func _part(parent: Node3D, size: Vector3, at: Vector3, material: Material, part_name: String = "") -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = size
-	part.mesh = mesh
-	part.position = at
-	part.material_override = material
-	parent.add_child(part)
+	instance.mesh = mesh
+	instance.position = at
+	instance.material_override = material
+	if not part_name.is_empty():
+		instance.name = part_name
+	parent.add_child(instance)
+	return instance
 
-func _build_gate(at: Vector3, name: String) -> void:
-	var gate := Node3D.new()
-	gate.name = name
-	gate.position = at
-	var stone := _mat(Color("#b9ad98"), 0.86)
-	_add_tower_part(gate, Vector3(4, 13, 4), Vector3(-12, 6.5, 0), stone)
-	_add_tower_part(gate, Vector3(4, 13, 4), Vector3(12, 6.5, 0), stone)
-	_add_tower_part(gate, Vector3(28, 3, 4), Vector3(0, 13, 0), stone)
-	add_child(gate)
+func _make_clock_tower() -> void:
+	var tower := Node3D.new()
+	tower.name = "SialkotClockTowerHeroLandmark"
+	var limestone := _mat(Color("#c9b796"), 0.83)
+	var trim := _mat(Color("#9b8467"), 0.82)
+	var dark := _mat(Color("#26343a"), 0.35)
+	_part(tower, Vector3(15,18,15), Vector3(0,9,0), limestone, "ClockTowerBase")
+	_part(tower, Vector3(12.5,2,12.5), Vector3(0,18.5,0), trim)
+	_part(tower, Vector3(10.5,11,10.5), Vector3(0,25,0), limestone, "ClockChamber")
+	_part(tower, Vector3(11.5,0.8,11.5), Vector3(0,31,0), trim)
+	_part(tower, Vector3(7.5,5,7.5), Vector3(0,34,0), limestone)
+	_part(tower, Vector3(4.0,8,4.0), Vector3(0,40.5,0), trim)
+	var roof := PrismMesh.new()
+	roof.size = Vector3(6.5,3.5,6.5)
+	var cap := MeshInstance3D.new()
+	cap.mesh = roof
+	cap.position.y = 46.0
+	cap.material_override = dark
+	tower.add_child(cap)
+	for face in range(4):
+		var angle := float(face) * PI * 0.5
+		var clock := MeshInstance3D.new()
+		var dial := CylinderMesh.new()
+		dial.top_radius = 2.05
+		dial.bottom_radius = 2.05
+		dial.height = 0.16
+		clock.mesh = dial
+		clock.position = Vector3(sin(angle) * 5.34,25.5,cos(angle) * 5.34)
+		clock.rotation.x = PI * 0.5
+		clock.rotation.y = angle
+		clock.material_override = dark
+		tower.add_child(clock)
+		var inner := MeshInstance3D.new()
+		var dial_face := CylinderMesh.new()
+		dial_face.top_radius = 1.72
+		dial_face.bottom_radius = 1.72
+		dial_face.height = 0.18
+		inner.mesh = dial_face
+		inner.position = clock.position + Vector3(sin(angle) * 0.1,0,cos(angle) * 0.1)
+		inner.rotation = clock.rotation
+		inner.material_override = _mat(Color("#e5d9bd"), 0.42)
+		tower.add_child(inner)
+		# Clock hands and cardinal ticks on the front dial.
+		for tick in range(12):
+			var t := float(tick) * TAU / 12.0
+			var mark := MeshInstance3D.new()
+			var mark_mesh := BoxMesh.new()
+			mark_mesh.size = Vector3(0.08,0.42,0.07)
+			mark.mesh = mark_mesh
+			mark.position = inner.position + Vector3(sin(t)*1.42,cos(t)*1.42,0.12)
+			mark.rotation.z = -t
+			mark.material_override = trim
+			tower.add_child(mark)
+		var hand := MeshInstance3D.new()
+		var hand_mesh := BoxMesh.new()
+		hand_mesh.size = Vector3(0.09,1.0,0.06)
+		hand.mesh = hand_mesh
+		hand.position = inner.position + Vector3(0,0.05,0.16)
+		hand.rotation.z = -0.55
+		hand.material_override = dark
+		tower.add_child(hand)
+	add_child(tower)
 
-func _add_wayfinding_marker(at: Vector3, caption: String) -> void:
-	var marker := Label3D.new()
-	marker.text = caption
-	marker.position = at + Vector3(0, 22, 0)
-	marker.font_size = 36
-	marker.outline_size = 8
-	marker.modulate = Color("#f2dfb8")
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	add_child(marker)
-
-func _build_street_furniture() -> void:
-	for x in [-480.0, -240.0, 240.0, 480.0, 720.0, 960.0]:
-		for z in [-520.0, 520.0]:
-			_add_street_light(Vector3(x, 0, z))
-	for x in [-690.0, -620.0, -550.0, 970.0, 1040.0, 1110.0]:
-		_add_tree(Vector3(x, 0, -560.0 if x < 0 else 520.0))
-
-func _add_street_light(at: Vector3) -> void:
-	var pole := MeshInstance3D.new()
-	var pole_mesh := CylinderMesh.new()
-	pole_mesh.top_radius = 0.12
-	pole_mesh.bottom_radius = 0.18
-	pole_mesh.height = 8.0
-	pole.mesh = pole_mesh
-	pole.position = at + Vector3(0, 4, 0)
-	pole.material_override = _mat(Color("#343b3b"), 0.65)
-	add_child(pole)
-	var lamp := MeshInstance3D.new()
-	var lamp_mesh := BoxMesh.new()
-	lamp_mesh.size = Vector3(1.4, 0.24, 0.55)
-	lamp.mesh = lamp_mesh
-	lamp.position = at + Vector3(0.65, 7.8, 0)
-	lamp.material_override = _mat(Color("#e6d5aa"), 0.32)
-	add_child(lamp)
-
-func _add_tree(at: Vector3) -> void:
-	var trunk := MeshInstance3D.new()
-	var trunk_mesh := CylinderMesh.new()
-	trunk_mesh.top_radius = 0.28
-	trunk_mesh.bottom_radius = 0.42
-	trunk_mesh.height = 3.8
-	trunk.mesh = trunk_mesh
-	trunk.position = at + Vector3(0, 1.9, 0)
-	trunk.material_override = _mat(Color("#55422f"), 0.95)
-	add_child(trunk)
-	var crown := MeshInstance3D.new()
-	var crown_mesh := SphereMesh.new()
-	crown_mesh.radius = 2.4
-	crown_mesh.height = 4.8
-	crown.mesh = crown_mesh
-	crown.position = at + Vector3(0, 5.0, 0)
-	crown.material_override = _mat(Color("#3e5a3b"), 0.95)
-	add_child(crown)
+func _make_street_details() -> void:
+	var pole_mat := _mat(Color("#333b3c"), 0.55, 0.35)
+	var warm := _mat(Color("#e8d6ad"), 0.25)
+	for x in [-365.0,-250.0,-125.0,125.0,250.0,365.0]:
+		for z in [-365.0,365.0]:
+			var pole := MeshInstance3D.new()
+			var shaft := CylinderMesh.new()
+			shaft.top_radius = 0.09
+			shaft.bottom_radius = 0.14
+			shaft.height = 7.2
+			pole.mesh = shaft
+			pole.position = Vector3(x,3.6,z)
+			pole.material_override = pole_mat
+			add_child(pole)
+			var lamp := MeshInstance3D.new()
+			var housing := BoxMesh.new()
+			housing.size = Vector3(0.9,0.22,0.5)
+			lamp.mesh = housing
+			lamp.position = Vector3(x+0.42,7.1,z)
+			lamp.material_override = warm
+			add_child(lamp)
+	for i in range(8):
+		var bollard := MeshInstance3D.new()
+		var cylinder := CylinderMesh.new()
+		cylinder.top_radius = 0.12
+		cylinder.bottom_radius = 0.16
+		cylinder.height = 0.9
+		bollard.mesh = cylinder
+		var angle := float(i) * TAU / 8.0
+		bollard.position = Vector3(cos(angle)*25.0,0.45,sin(angle)*25.0)
+		bollard.material_override = trim
+		add_child(bollard)
+	var district := Label3D.new()
+	district.text = "SADDAR BAZAAR"
+	district.position = Vector3(-95,8,-35)
+	district.font_size = 42
+	district.outline_size = 8
+	district.modulate = Color("#f1dfbf")
+	district.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	add_child(district)
