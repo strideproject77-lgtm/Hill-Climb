@@ -228,3 +228,15 @@ Track the vertical playable slice separately from total planned content. Count o
 - Extra improvements: desktop mouse joystick emulation, smoother analog input around the center, and movement/sprint reset when entering or exiting the vehicle.
 - Limitation: character remains procedural geometry; authored photorealistic model, weighted Skeleton3D, mocap-quality clips and true two-bone foot IK are not implemented. No authored character asset was available in the repository asset tree.
 - No tests/workflows were run; consolidated validation remains pending. No IPA build/sign/export was performed.
+
+
+## Progress entry — 2026-11-15
+### Vehicle presentation and driver interaction — Source implemented; validation pending
+- Upgraded the existing procedural sedan into an original M4-inspired performance coupe presentation: wider rear haunches, coupe side glazing, front fender vents, hood power bulge, front splitter/intakes, rear diffuser, quad exhaust outlets, rear spoiler and a more performance-oriented stance.
+- Added detailed wheel assemblies with brake discs, red calipers, hub caps and ten radial alloy spokes per wheel.
+- Replaced the static front door details with independently hinged front doors and smooth open/close animation. Added driver/passenger seat shapes, steering wheel and a driver-seat anchor.
+- Added a driver-side enter/exit sequence: approach the driver door, open it, animate the character into a seated pose, close the door and enable driving; exiting opens the door, restores a standing pose and closes it.
+- Added progressive torque delivery, speed-sensitive steering, mild traction limiting during hard high-speed steering, and speed-dependent damping for more stable city driving.
+- Extra improvements: door-transition lock prevents repeated enter/exit triggers; driver approach and exit positions are aligned to the same side; steering wheel turns with the steering input; wheel spokes are aligned to the wheel face.
+- Important asset limitation: no imported BMW M4 mesh/model was present in the repository asset tree. This batch creates an original M4-inspired procedural coupe, not an authentic/licensed BMW M4 model or a photorealistic external asset. Do not label it as the official BMW model.
+- Remaining: integrate a properly licensed high-detail coupe GLB/GLTF with separate door meshes and correct pivots; improve interior dashboard/instruments, mirrors, glass/reflections, lights and tire contact; refine true seated hand-to-wheel alignment; tune suspension/tyre physics; run one consolidated Godot parse/startup and Android validation plus physical-device inspection. Vehicle phase remains incomplete. No tests/workflows were run and no IPA build/sign/export was performed.
