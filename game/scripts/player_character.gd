@@ -59,6 +59,49 @@ func set_move_input(axis: Vector2, run: bool = false) -> void:
 	move_axis = axis.limit_length(1.0)
 	sprinting = run
 
+func enter_vehicle_visual(vehicle_root: Node3D, seat_position: Vector3) -> void:
+	move_axis = Vector2.ZERO
+	sprinting = false
+	if not is_instance_valid(visual_root) or not is_instance_valid(vehicle_root):
+		return
+	visual_root.reparent(vehicle_root, true)
+	visual_root.position = seat_position + Vector3(0.0,-0.48,0.0)
+	visual_root.rotation = Vector3.ZERO
+	visual_root.scale = Vector3.ONE
+	# Fold thighs forward and lower legs under the dashboard; bend both
+	# elbows so the hands settle toward the steering wheel.
+	if left_leg:
+		left_leg.rotation.x = 0.92
+	if right_leg:
+		right_leg.rotation.x = 0.92
+	if left_knee:
+		left_knee.rotation.x = -1.18
+	if right_knee:
+		right_knee.rotation.x = -1.18
+	if left_ankle:
+		left_ankle.rotation.x = -0.12
+	if right_ankle:
+		right_ankle.rotation.x = -0.12
+	if left_arm:
+		left_arm.rotation.x = -0.62
+	if right_arm:
+		right_arm.rotation.x = -0.62
+	if left_elbow:
+		left_elbow.rotation.x = -0.72
+	if right_elbow:
+		right_elbow.rotation.x = -0.72
+
+func exit_vehicle_visual(character_root: Node3D) -> void:
+	if not is_instance_valid(visual_root) or not is_instance_valid(character_root):
+		return
+	visual_root.reparent(character_root, true)
+	visual_root.position = Vector3.ZERO
+	visual_root.rotation = Vector3.ZERO
+	visual_root.scale = Vector3.ONE
+	for limb in [left_leg,right_leg,left_knee,right_knee,left_ankle,right_ankle,left_arm,right_arm,left_elbow,right_elbow]:
+		if is_instance_valid(limb):
+			limb.rotation = Vector3.ZERO
+
 func _physics_process(delta: float) -> void:
 	var keyboard := Vector2(
 		float(Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT)),
