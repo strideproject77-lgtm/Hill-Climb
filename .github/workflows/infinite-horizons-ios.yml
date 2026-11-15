@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       authorize_ipa_export:
-        description: "Explicitly authorize signing and exporting the IPA"
+        description: "Explicitly authorize an unsigned iOS IPA build"
         required: true
         type: boolean
         default: false
@@ -17,87 +17,25 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: infinite-horizons-ios-\${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   export-ipa:
     if: github.event_name == 'push' || github.event.inputs.authorize_ipa_export == 'true'
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - name: Checkout game branch
         uses: actions/checkout@v4
         with:
           ref: hill-climb-game
 
-      - name: Verify required signing secrets
-        env:
-          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          for name in IOS_CERTIFICATE_P12_BASE64 IOS_CERTIFICATE_PASSWORD IOS_PROVISION_PROFILE_BASE64 IOS_TEAM_ID; do
-            if [ -z "${!name}" ]; then
-              echo "::error::Missing repository secret: $name"
-              exit 1
-            fi
-          done
-          if [ "${#IOS_TEAM_ID}" -ne 10 ]; then
-            echo "::error::IOS_TEAM_ID must be the 10-character Apple Team ID."
-            exit 1
-          fi
-
-      - name: Install Apple signing assets and validate profile
-        env:
-          IOS_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
-          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
-          IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
-        run: |
-          set -euo pipefail
-          KEYCHAIN_PATH="$RUNNER_TEMP/ih-build.keychain-db"
-          CERT_PATH="$RUNNER_TEMP/ios-signing.p12"
-          PROFILE_PATH="$RUNNER_TEMP/ios-profile.mobileprovision"
-          echo "$IOS_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
-          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-          security create-keychain -p "$IOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$IOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$CERT_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$IOS_CERTIFICATE_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          security cms -D -i "$PROFILE_PATH" > "$RUNNER_TEMP/profile.plist"
-          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
-          PROFILE_TEAM=$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/profile.plist")
-          PROFILE_BUNDLE=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:application-identifier' "$RUNNER_TEMP/profile.plist")
-          PROFILE_DEV=$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:get-task-allow' "$RUNNER_TEMP/profile.plist" 2>/dev/null || echo false)
-          if [ "$PROFILE_TEAM" != "$IOS_TEAM_ID" ]; then
-            echo "::error::Provisioning profile Team ID does not match IOS_TEAM_ID."
-            exit 1
-          fi
-          case "$PROFILE_BUNDLE" in
-            "$IOS_TEAM_ID.com.strideproject.openworld"|"${IOS_TEAM_ID}."*) ;;
-            *) echo "::error::Provisioning profile does not cover com.strideproject.openworld."; exit 1 ;;
-          esac
-          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-          IDENTITY_LINE=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -m1 '"')
-          if [ -z "$IDENTITY_LINE" ]; then
-            echo "::error::No usable Apple code-signing identity found in the P12 certificate."
-            exit 1
-          fi
-          SIGN_IDENTITY=$(printf '%s\n' "$IDENTITY_LINE" | sed -E 's/^[[:space:]]*[0-9]+\) [A-F0-9]+ "(.*)"$/\1/')
-          echo "IOS_PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
-          echo "IOS_PROFILE_DEV=$PROFILE_DEV" >> "$GITHUB_ENV"
-          echo "IOS_SIGN_IDENTITY=$SIGN_IDENTITY" >> "$GITHUB_ENV"
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
-
       - name: Install Godot 4.4.1 and iOS export templates
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 \
-            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip \
-            -o "$RUNNER_TEMP/godot-macos.zip"
+          curl --fail --location --retry 3 https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_macos.universal.zip -o "$RUNNER_TEMP/godot-macos.zip"
           mkdir -p "$RUNNER_TEMP/godot-app"
           ditto -x -k "$RUNNER_TEMP/godot-macos.zip" "$RUNNER_TEMP/godot-app"
           APP_PATH="$(find "$RUNNER_TEMP/godot-app" -maxdepth 4 -name Godot.app -print -quit)"
@@ -109,59 +47,103 @@ jobs:
           echo "GODOT_BIN=$GODOT_BIN" >> "$GITHUB_ENV"
           TEMPLATE_DIR="$HOME/Library/Application Support/Godot/export_templates/4.4.1.stable"
           mkdir -p "$TEMPLATE_DIR" "$RUNNER_TEMP/godot-templates"
-          curl --fail --location --retry 3 \
-            https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz \
-            -o "$RUNNER_TEMP/godot-templates.tpz"
+          curl --fail --location --retry 3 https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_export_templates.tpz -o "$RUNNER_TEMP/godot-templates.tpz"
           unzip -q "$RUNNER_TEMP/godot-templates.tpz" -d "$RUNNER_TEMP/godot-templates"
           cp -a "$RUNNER_TEMP/godot-templates/templates/." "$TEMPLATE_DIR/"
 
-      - name: Import and validate shared Godot project
+      - name: Import and smoke-test shared Godot project
         run: |
           set -euo pipefail
           "$GODOT_BIN" --headless --editor --path game --quit
           "$GODOT_BIN" --headless --path game --quit-after 120
 
-      - name: Configure signing and export signed iOS IPA
-        env:
-          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      - name: Export unsigned iOS Xcode project
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-          import os
           path = Path("game/export_presets.cfg")
           text = path.read_text()
-          replacements = {
-              'application/app_store_team_id=""': f'application/app_store_team_id="{os.environ["IOS_TEAM_ID"]}"',
-              'application/provisioning_profile_uuid_release=""': f'application/provisioning_profile_uuid_release="{os.environ["IOS_PROFILE_UUID"]}"',
-              'application/provisioning_profile_uuid_debug=""': f'application/provisioning_profile_uuid_debug="{os.environ["IOS_PROFILE_UUID"]}"',
-              'application/code_sign_identity_release=""': f'application/code_sign_identity_release="{os.environ["IOS_SIGN_IDENTITY"]}"',
-              'application/code_sign_identity_debug=""': f'application/code_sign_identity_debug="{os.environ["IOS_SIGN_IDENTITY"]}"',
-          }
-          for old, new in replacements.items():
-              if old not in text:
-                  raise SystemExit(f"Expected export preset setting not found: {old}")
+          old = "application/export_project_only=false"
+          new = "application/export_project_only=true"
+          if old in text:
               text = text.replace(old, new, 1)
-          release_method = "3" if os.environ["IOS_PROFILE_DEV"].lower() == "true" else "1"
-          text = text.replace("application/export_method_release=1", f"application/export_method_release={release_method}", 1)
+          elif new not in text:
+              raise SystemExit("Could not locate iOS export_project_only setting")
           path.write_text(text)
           PY
+          rm -rf game/build/ios-project
           mkdir -p game/build
-          "$GODOT_BIN" --headless --path game --export-release "iOS" game/build/infinite-horizons.ipa
-          test -s game/build/infinite-horizons.ipa
-          unzip -t game/build/infinite-horizons.ipa
+          "$GODOT_BIN" --headless --path game --export-release "iOS" game/build/ios-project
+          PROJECT="$(find game/build/ios-project -maxdepth 4 -name '*.xcodeproj' -print -quit)"
+          test -n "$PROJECT"
+          echo "IOS_XCODE_PROJECT=$PROJECT" >> "$GITHUB_ENV"
+          echo "Generated Xcode project: $PROJECT"
 
-      - name: Upload signed IPA artifact
+      - name: Compile unsigned iPhone app
+        run: |
+          set -euo pipefail
+          xcodebuild -list -json -project "$IOS_XCODE_PROJECT" > "$RUNNER_TEMP/xcode-list.json"
+          SCHEME="$(python3 - "$RUNNER_TEMP/xcode-list.json" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          schemes = data.get("project", {}).get("schemes", [])
+          if not schemes:
+              raise SystemExit("No Xcode scheme found in exported Godot project")
+          print(schemes[0])
+          PY
+          )"
+          echo "Using Xcode scheme: $SCHEME"
+          xcodebuild -project "$IOS_XCODE_PROJECT" -scheme "$SCHEME" -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/InfiniteHorizonsDerivedData" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          APP_PATH="$(find "$RUNNER_TEMP/InfiniteHorizonsDerivedData/Build/Products/Release-iphoneos" -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$APP_PATH"
+          echo "IOS_APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
+
+      - name: Verify app and package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$IOS_APP_PATH"
+          PLIST="$APP_PATH/Info.plist"
+          test -s "$PLIST"
+          plutil -lint "$PLIST"
+          BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")
+          EXECUTABLE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")
+          EXECUTABLE="$APP_PATH/$EXECUTABLE_NAME"
+          test "$BUNDLE_ID" = "com.strideproject.openworld"
+          test -s "$EXECUTABLE"
+          ARCHS="$(lipo -archs "$EXECUTABLE")"
+          printf '%s\n' "$ARCHS" | tr ' ' '\n' | grep -Fxq arm64
+          STAGING="$RUNNER_TEMP/ih-ipa"
+          IPA="$GITHUB_WORKSPACE/Infinite-Horizons-unsigned.ipa"
+          rm -rf "$STAGING" "$IPA"
+          mkdir -p "$STAGING/Payload"
+          ditto "$APP_PATH" "$STAGING/Payload/$(basename "$APP_PATH")"
+          cd "$STAGING"
+          /usr/bin/zip -qry "$IPA" Payload
+          test -s "$IPA"
+          unzip -t "$IPA"
+          unzip -Z1 "$IPA" | grep -F "Payload/$(basename "$APP_PATH")/Info.plist"
+          shasum -a 256 "$IPA"
+          ls -lh "$IPA"
+          {
+            echo "INFINITE HORIZONS — unsigned iOS build"
+            echo "Commit: $GITHUB_SHA"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Bundle ID: $BUNDLE_ID"
+            echo "Executable: $EXECUTABLE_NAME"
+            echo "Architectures: $ARCHS"
+            echo "Signing: Disabled — unsigned IPA for local sideload signing"
+            echo "IPA bytes: $(stat -f%z "$IPA")"
+            echo "SHA-256: $(shasum -a 256 "$IPA" | awk '{print $1}')"
+          } > "$GITHUB_WORKSPACE/Infinite-Horizons-Build-Report.txt"
+          cat "$GITHUB_WORKSPACE/Infinite-Horizons-Build-Report.txt"
+
+      - name: Upload IPA and build report
         uses: actions/upload-artifact@v4
         with:
-          name: infinite-horizons-ios-ipa
-          path: game/build/infinite-horizons.ipa
+          name: Infinite-Horizons-unsigned-iOS-\${{ github.run_number }}
+          path: |
+            Infinite-Horizons-unsigned.ipa
+            Infinite-Horizons-Build-Report.txt
           if-no-files-found: error
-          retention-days: 7
-
-      - name: Clean signing keychain
-        if: always()
-        run: |
-          if [ -n "${KEYCHAIN_PATH:-}" ]; then
-            security delete-keychain "$KEYCHAIN_PATH" || true
-          fi
+          retention-days: 14
