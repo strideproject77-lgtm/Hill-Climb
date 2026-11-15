@@ -254,7 +254,7 @@ func _enter_vehicle_sequence() -> void:
 	# A short approach/seat transition: the character is moved to the driver
 	# seat, adopts a seated pose, then the door closes before driving begins.
 	var seat_world: Transform3D = vehicle.get_driver_seat_transform()
-	var side_step := vehicle.global_transform.basis.x * -1.18
+	var side_step := vehicle.global_transform.basis.x * 1.18
 	var approach := seat_world.origin + side_step + Vector3.UP * 0.08
 	var approach_tween := create_tween()
 	approach_tween.tween_property(player,"global_position",approach,0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -280,7 +280,7 @@ func _exit_vehicle_sequence() -> void:
 	vehicle.angular_velocity = Vector3.ZERO
 	vehicle.set_doors_open(true,0.42)
 	await get_tree().create_timer(0.46).timeout
-	var exit_position := vehicle.global_position + vehicle.global_transform.basis.x * -2.25 + Vector3.UP * 0.18
+	var exit_position := vehicle.global_position + vehicle.global_transform.basis.x * 2.25 + Vector3.UP * 0.18
 	player.global_position = exit_position
 	player.velocity = Vector3.ZERO
 	player.exit_vehicle_visual(player)
