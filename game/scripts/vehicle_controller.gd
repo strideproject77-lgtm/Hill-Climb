@@ -11,6 +11,13 @@ var brake_input := 0.0
 var steer_input := 0.0
 var speed_kmh := 0.0
 var model_root: Node3D
+var left_front_door: Node3D
+var right_front_door: Node3D
+var door_open_amount := 0.0
+var door_tween: Tween
+var driver_seat: Marker3D
+var steering_wheel: Node3D
+var brake_lights: Array[MeshInstance3D] = []
 
 func _ready() -> void:
 	mass = 1420.0
@@ -39,6 +46,8 @@ func _physics_process(delta: float) -> void:
 	engine_force = throttle * ENGINE_POWER
 	brake = braking * BRAKE_POWER
 	steering = move_toward(steering, -steer_axis * MAX_STEER, delta * STEER_RESPONSE)
+	if is_instance_valid(steering_wheel):
+		steering_wheel.rotation.z = -steering * 0.72
 	speed_kmh = linear_velocity.length() * 3.6
 
 func set_drive_controls(gas: float, brake_value: float, steering_value: float) -> void:
@@ -113,6 +122,108 @@ func _build_vehicle_model() -> void:
 	_add_box("HoodCreaseLeft", Vector3(0.025,0.018,0.92), Vector3(-0.48,0.615,-1.58), chrome)
 	_add_box("HoodCreaseRight", Vector3(0.025,0.018,0.92), Vector3(0.48,0.615,-1.58), chrome)
 	_add_box("Dashboard", Vector3(1.02,0.13,0.32), Vector3(0,0.94,-0.62), trim)
+	# Original high-performance coupe detailing: wide M-style stance, deep
+	# front intakes, splitter, rear diffuser, quad exhausts and cabin trim.
+	_add_box("FrontSplitter", Vector3(1.72,0.075,0.30), Vector3(0,0.095,-2.12), trim)
+	_add_box("LowerIntake", Vector3(1.12,0.16,0.045), Vector3(0,0.255,-2.19), glass)
+	_add_box("IntakeLeft", Vector3(0.28,0.20,0.05), Vector3(-0.62,0.27,-2.17), trim)
+	_add_box("IntakeRight", Vector3(0.28,0.20,0.05), Vector3(0.62,0.27,-2.17), trim)
+	_add_box("RearDiffuser", Vector3(1.42,0.10,0.26), Vector3(0,0.10,2.02), trim)
+	for exhaust_x in [-0.55,-0.38,0.38,0.55]:
+		var exhaust := CylinderMesh.new()
+		exhaust.top_radius = 0.055
+		exhaust.bottom_radius = 0.055
+		exhaust.height = 0.12
+		var pipe := MeshInstance3D.new()
+		pipe.mesh = exhaust
+		pipe.rotation.x = PI * 0.5
+		pipe.position = Vector3(exhaust_x,0.19,2.12)
+		pipe.material_override = chrome
+		model_root.add_child(pipe)
+	_add_box("RearSpoiler", Vector3(1.32,0.055,0.18), Vector3(0,0.69,1.72), trim)
+	_add_box("RearSpoilerLeftMount", Vector3(0.06,0.18,0.08), Vector3(-0.48,0.61,1.68), chrome)
+	_add_box("RearSpoilerRightMount", Vector3(0.06,0.18,0.08), Vector3(0.48,0.61,1.68), chrome)
+	_add_box("HoodPowerBulge", Vector3(0.54,0.035,0.74), Vector3(0,0.625,-1.54), paint)
+	_add_box("CenterConsole", Vector3(0.20,0.16,0.62), Vector3(0,0.82,-0.05), trim)
+	_add_box("DriverSeatBase", Vector3(0.48,0.20,0.48), Vector3(-0.34,0.68,0.30), trim)
+	_add_box("DriverSeatBack", Vector3(0.48,0.62,0.18), Vector3(-0.34,1.00,0.48), trim)
+	_add_box("PassengerSeatBase", Vector3(0.48,0.20,0.48), Vector3(0.34,0.68,0.30), trim)
+	_add_box("PassengerSeatBack", Vector3(0.48,0.62,0.18), Vector3(0.34,1.00,0.48), trim)
+	steering_wheel = Node3D.new()
+	steering_wheel.name = "SteeringWheelPivot"
+	steering_wheel.position = Vector3(-0.34,0.98,-0.60)
+	model_root.add_child(steering_wheel)
+	var wheel_ring := TorusMesh.new()
+	wheel_ring.inner_radius = 0.13
+	wheel_ring.outer_radius = 0.17
+	var wheel_visual := MeshInstance3D.new()
+	wheel_visual.mesh = wheel_ring
+	wheel_visual.rotation.x = PI * 0.5
+	wheel_visual.material_override = trim
+	steering_wheel.add_child(wheel_visual)
+	driver_seat = Marker3D.new()
+	driver_seat.name = "DriverSeatAnchor"
+	driver_seat.position = Vector3(-0.34,0.82,0.22)
+	model_root.add_child(driver_seat)
+	_create_front_door(-1.0)
+	_create_front_door(1.0)
+
+func _create_front_door(side: float) -> void:
+	var hinge := Node3D.new()
+	hinge.name = "DriverDoorHinge" if side < 0.0 else "PassengerDoorHinge"
+	hinge.position = Vector3(side * 0.84,0.55,-0.92)
+	model_root.add_child(hinge)
+	var door_material := _paint(Color("#344f67"),0.68,0.27)
+	var glass_material := _paint(Color("#172c39"),0.42,0.16)
+	var door_panel := MeshInstance3D.new()
+	var panel_mesh := BoxMesh.new()
+	panel_mesh.size = Vector3(0.075,0.42,0.98)
+	door_panel.mesh = panel_mesh
+	door_panel.position = Vector3(side * 0.015,-0.12,0.43)
+	door_panel.material_override = door_material
+	hinge.add_child(door_panel)
+	var window := MeshInstance3D.new()
+	var window_mesh := BoxMesh.new()
+	window_mesh.size = Vector3(0.035,0.34,0.90)
+	window.mesh = window_mesh
+	window.position = Vector3(side * 0.005,0.29,0.40)
+	window.material_override = glass_material
+	hinge.add_child(window)
+	var handle := MeshInstance3D.new()
+	var handle_mesh := BoxMesh.new()
+	handle_mesh.size = Vector3(0.025,0.035,0.18)
+	handle.mesh = handle_mesh
+	handle.position = Vector3(side * 0.058,0.02,0.42)
+	handle.material_override = _paint(Color("#bdc6cc"),0.85,0.2)
+	hinge.add_child(handle)
+	var trim_line := MeshInstance3D.new()
+	var line_mesh := BoxMesh.new()
+	line_mesh.size = Vector3(0.018,0.018,0.82)
+	trim_line.mesh = line_mesh
+	trim_line.position = Vector3(side * 0.058,-0.28,0.42)
+	trim_line.material_override = _paint(Color("#18212a"),0.35,0.42)
+	hinge.add_child(trim_line)
+	if side < 0.0:
+		left_front_door = hinge
+	else:
+		right_front_door = hinge
+
+func set_doors_open(open: bool, duration: float = 0.42) -> void:
+	if door_tween and door_tween.is_running():
+		door_tween.kill()
+	door_tween = create_tween().set_parallel(true)
+	var target := 1.0 if open else 0.0
+	door_tween.tween_method(_set_door_amount,target if open else door_open_amount,door_open_amount if open else target,duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+
+func _set_door_amount(amount: float) -> void:
+	door_open_amount = clampf(amount,0.0,1.0)
+	if is_instance_valid(left_front_door):
+		left_front_door.rotation.y = -door_open_amount * 1.08
+	if is_instance_valid(right_front_door):
+		right_front_door.rotation.y = door_open_amount * 1.08
+
+func get_driver_seat_transform() -> Transform3D:
+	return driver_seat.global_transform if is_instance_valid(driver_seat) else global_transform
 
 func _add_hull(stations: Array, material: Material, node_name: String) -> void:
 	var surface := SurfaceTool.new()
