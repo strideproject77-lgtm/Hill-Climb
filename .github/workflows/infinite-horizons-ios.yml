@@ -84,7 +84,9 @@ jobs:
           PY
           rm -rf game/build/ios-project
           mkdir -p game/build
-          "$GODOT_BIN" --headless --path game --export-release "iOS" game/build/ios-project
+          # Godot resolves export destinations relative to the project root
+          # (game/), not the repository root.
+          "$GODOT_BIN" --headless --path game --export-release "iOS" build/ios-project
           PROJECT="$(find game/build/ios-project -maxdepth 4 -name '*.xcodeproj' -print -quit)"
           test -n "$PROJECT"
           echo "IOS_XCODE_PROJECT=$PROJECT" >> "$GITHUB_ENV"
