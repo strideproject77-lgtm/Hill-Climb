@@ -232,38 +232,76 @@ func _update_vehicle_input() -> void:
 func _update_player_input() -> void:
 	player.set_move_input(joystick_axis,bool(held_controls.get("sprint",false)))
 
+var vehicle_transition_busy := false
+
 func _toggle_vehicle() -> void:
-	# Clear any held analog/digital movement before switching control modes.
+	if vehicle_transition_busy:
+		return
+	if driving:
+		_exit_vehicle_sequence()
+	else:
+		_enter_vehicle_sequence()
+
+func _enter_vehicle_sequence() -> void:
+	if player.global_position.distance_to(vehicle.global_position) > 14.5:
+		mode_label.text = "MOVE CLOSER TO THE COUPE"
+		return
+	vehicle_transition_busy = true
+	_clear_on_foot_input()
+	mode_label.text = "UNLOCKING DRIVER DOOR..."
+	vehicle.set_doors_open(true,0.48)
+	await get_tree().create_timer(0.52).timeout
+	# A short approach/seat transition: the character is moved to the driver
+	# seat, adopts a seated pose, then the door closes before driving begins.
+	var seat_world: Transform3D = vehicle.get_driver_seat_transform()
+	var side_step := vehicle.global_transform.basis.x * -1.18
+	var approach := seat_world.origin + side_step + Vector3.UP * 0.08
+	var approach_tween := create_tween()
+	approach_tween.tween_property(player,"global_position",approach,0.28).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await approach_tween.finished
+	player.rotation.y = vehicle.rotation.y
+	player.set_physics_process(false)
+	player.collision_layer = 0
+	player.collision_mask = 0
+	player.enter_vehicle_visual(vehicle.model_root,vehicle.driver_seat.position)
+	player.visible = false
+	vehicle.set_doors_open(false,0.38)
+	await get_tree().create_timer(0.42).timeout
+	driving = true
+	vehicle.freeze = false
+	vehicle.sleeping = false
+	vehicle_transition_busy = false
+	_update_mode_ui()
+
+func _exit_vehicle_sequence() -> void:
+	vehicle_transition_busy = true
+	vehicle.set_drive_controls(0.0,1.0,0.0)
+	vehicle.linear_velocity = Vector3.ZERO
+	vehicle.angular_velocity = Vector3.ZERO
+	vehicle.set_doors_open(true,0.42)
+	await get_tree().create_timer(0.46).timeout
+	var exit_position := vehicle.global_position + vehicle.global_transform.basis.x * -2.25 + Vector3.UP * 0.18
+	player.global_position = exit_position
+	player.velocity = Vector3.ZERO
+	player.exit_vehicle_visual(player)
+	player.visible = true
+	player.set_physics_process(true)
+	player.collision_layer = 1
+	player.collision_mask = 1
+	vehicle.set_doors_open(false,0.38)
+	await get_tree().create_timer(0.40).timeout
+	driving = false
+	vehicle.set_drive_controls(0.0,0.0,0.0)
+	vehicle_transition_busy = false
+	_update_mode_ui()
+
+func _clear_on_foot_input() -> void:
 	joystick_axis = Vector2.ZERO
 	held_controls["sprint"] = false
 	if is_instance_valid(move_joystick):
 		move_joystick.reset_axis()
 	if is_instance_valid(player):
 		player.set_move_input(Vector2.ZERO,false)
-	if not driving:
-		if player.global_position.distance_to(vehicle.global_position) > 14.5:
-			mode_label.text = "MOVE CLOSER TO THE SEDAN"
-			return
-		driving = true
-		player.visible = false
-		player.set_physics_process(false)
-		player.collision_layer = 0
-		player.collision_mask = 0
-		vehicle.freeze = false
-		vehicle.sleeping = false
-	else:
-		driving = false
-		vehicle.set_drive_controls(0.0,1.0,0.0)
-		vehicle.linear_velocity = Vector3.ZERO
-		vehicle.angular_velocity = Vector3.ZERO
-		player.global_position = vehicle.global_position + vehicle.global_transform.basis.x * 2.4 + Vector3.UP * 0.2
-		player.velocity = Vector3.ZERO
-		player.visible = true
-		player.set_physics_process(true)
-		player.collision_layer = 1
-		player.collision_mask = 1
-		vehicle.set_drive_controls(0.0,0.0,0.0)
-	_update_mode_ui()
 
 class VirtualJoystick extends Control:
 	signal axis_changed(axis: Vector2)
