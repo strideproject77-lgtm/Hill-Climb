@@ -65,7 +65,8 @@ jobs:
           sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
           xcode-select -p
           xcodebuild -version
-          codesign --version
+          # Verify the codesign tool exists; macOS codesign has no --version flag.
+          command -v codesign
           python3 - <<'PY'
           from pathlib import Path
           path = Path("game/export_presets.cfg")
