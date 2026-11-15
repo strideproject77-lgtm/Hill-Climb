@@ -233,6 +233,13 @@ func _update_player_input() -> void:
 	player.set_move_input(joystick_axis,bool(held_controls.get("sprint",false)))
 
 func _toggle_vehicle() -> void:
+	# Clear any held analog/digital movement before switching control modes.
+	joystick_axis = Vector2.ZERO
+	held_controls["sprint"] = false
+	if is_instance_valid(move_joystick):
+		move_joystick.reset_axis()
+	if is_instance_valid(player):
+		player.set_move_input(Vector2.ZERO,false)
 	if not driving:
 		if player.global_position.distance_to(vehicle.global_position) > 14.5:
 			mode_label.text = "MOVE CLOSER TO THE SEDAN"
@@ -308,6 +315,11 @@ class VirtualJoystick extends Control:
 		elif event is InputEventMouseMotion and mouse_active:
 			_set_from_position(event.position)
 			accept_event()
+
+	func reset_axis() -> void:
+		active_touch = -1
+		mouse_active = false
+		_set_axis(Vector2.ZERO)
 
 	func _set_from_position(point: Vector2) -> void:
 		var radius := minf(size.x,size.y) * 0.43
