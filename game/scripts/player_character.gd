@@ -19,6 +19,16 @@ var left_elbow: Node3D
 var right_elbow: Node3D
 var left_wrist: Node3D
 var right_wrist: Node3D
+var left_eye: MeshInstance3D
+var right_eye: MeshInstance3D
+var left_pupil: MeshInstance3D
+var right_pupil: MeshInstance3D
+var mouth_detail: MeshInstance3D
+var facial_clock := 0.0
+var blink_amount := 0.0
+var next_blink_at := 2.8
+var left_foot_ik_offset := 0.0
+var right_foot_ik_offset := 0.0
 var anim_clock := 0.0
 var moving_amount := 0.0
 var grounded_amount := 1.0
@@ -83,6 +93,7 @@ func _physics_process(delta: float) -> void:
 		idle_clock += delta
 	move_and_slide()
 	grounded_amount = move_toward(grounded_amount, 1.0 if is_on_floor() else 0.0, delta * 8.0)
+	_update_foot_grounding(delta)
 	_animate_character(delta)
 
 func _add_collision() -> void:
@@ -223,11 +234,19 @@ func _build_character() -> void:
 		var eye := SphereMesh.new()
 		eye.radius = 0.027
 		eye.height = 0.035
-		_mesh(visual_root, eye, Vector3(side * 0.078, 2.015, -0.211), eye_white)
+		var eye_part := _mesh(visual_root, eye, Vector3(side * 0.078, 2.015, -0.211), eye_white)
+		if side < 0.0:
+			left_eye = eye_part
+		else:
+			right_eye = eye_part
 		var pupil := SphereMesh.new()
 		pupil.radius = 0.013
 		pupil.height = 0.018
-		_mesh(visual_root, pupil, Vector3(side * 0.078, 2.014, -0.235), eye_dark)
+		var pupil_part := _mesh(visual_root, pupil, Vector3(side * 0.078, 2.014, -0.235), eye_dark)
+		if side < 0.0:
+			left_pupil = pupil_part
+		else:
+			right_pupil = pupil_part
 		var pocket := BoxMesh.new()
 		pocket.size = Vector3(0.13, 0.15, 0.025)
 		_mesh(visual_root, pocket, Vector3(side * 0.19, 1.30, -0.337), shirt)
@@ -254,7 +273,7 @@ func _build_character() -> void:
 	_mesh(visual_root, nose_tip, Vector3(0, 1.925, -0.25), skin)
 	var mouth := BoxMesh.new()
 	mouth.size = Vector3(0.105, 0.018, 0.018)
-	_mesh(visual_root, mouth, Vector3(0, 1.875, -0.226), lip_mat)
+	mouth_detail = _mesh(visual_root, mouth, Vector3(0, 1.875, -0.226), lip_mat)
 	for side in [-1.0, 1.0]:
 		var brow := BoxMesh.new()
 		brow.size = Vector3(0.09, 0.025, 0.035)
@@ -337,6 +356,58 @@ func _build_character() -> void:
 		var thumb_part := _mesh(wrist, thumb, Vector3(side * 0.085, -0.015, -0.015), skin)
 		thumb_part.rotation.z = -side * 0.65
 
+
+func _update_foot_grounding(delta: float) -> void:
+	# Lightweight ground adaptation for uneven streets; this is not full two-bone IK.
+	var space := get_world_3d().direct_space_state
+	var foot_specs := [
+		{"ankle": left_ankle, "side": -1.0},
+		{"ankle": right_ankle, "side": 1.0}
+	]
+	for spec in foot_specs:
+		var ankle: Node3D = spec["ankle"]
+		if ankle == null:
+			continue
+			
+		var side: float = spec["side"]
+		var foot_origin := ankle.global_position + Vector3(0.0, 0.42, -0.06)
+		var query := PhysicsRayQueryParameters3D.create(foot_origin, foot_origin + Vector3.DOWN * 0.78)
+		query.exclude = [get_rid()]
+		var hit := space.intersect_ray(query)
+		var target_offset := 0.0
+		if not hit.is_empty() and is_on_floor():
+			var desired_foot_y: float = hit.position.y + 0.075
+			target_offset = clampf(desired_foot_y - (ankle.global_position.y - 0.31 + 0.045), -0.12, 0.12)
+		if side < 0.0:
+			left_foot_ik_offset = move_toward(left_foot_ik_offset, target_offset, delta * 3.8)
+			ankle.position.y = -0.31 + left_foot_ik_offset
+		else:
+			right_foot_ik_offset = move_toward(right_foot_ik_offset, target_offset, delta * 3.8)
+			ankle.position.y = -0.31 + right_foot_ik_offset
+
+func _animate_face(delta: float, active_gait: float) -> void:
+	facial_clock += delta
+	if facial_clock >= next_blink_at:
+		blink_amount = 1.0
+		next_blink_at = facial_clock + 2.4 + fmod(facial_clock * 1.73, 2.1)
+	blink_amount = move_toward(blink_amount, 0.0, delta * 11.0)
+	var eye_height := maxf(0.12, 1.0 - blink_amount * 0.92)
+	if left_eye:
+		left_eye.scale.y = eye_height
+	if right_eye:
+		right_eye.scale.y = eye_height
+	var gaze_x := clampf(movement_intent_world.dot(global_transform.basis.x), -1.0, 1.0) * 0.012
+	var gaze_y := clampf(movement_intent_world.dot(global_transform.basis.z), -1.0, 1.0) * 0.006
+	if left_pupil:
+		left_pupil.position.x = -0.078 + gaze_x
+		left_pupil.position.y = 2.014 + gaze_y
+	if right_pupil:
+		right_pupil.position.x = 0.078 + gaze_x
+		right_pupil.position.y = 2.014 + gaze_y
+	if mouth_detail:
+		mouth_detail.scale.x = 1.0 + sin(facial_clock * 0.8) * 0.025 * (1.0 - active_gait)
+
+
 func _animate_character(delta: float) -> void:
 	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
 	var run_blend := 1.0 if (sprinting or Input.is_key_pressed(KEY_SHIFT)) and horizontal_speed > walk_speed * 0.72 else 0.0
@@ -389,6 +460,7 @@ func _animate_character(delta: float) -> void:
 	if right_wrist:
 		right_wrist.rotation.x = 0.10 - swing * 0.12
 		right_wrist.rotation.z = 0.035 * active_gait
+	_animate_face(delta, active_gait)
 	if visual_root:
 		var idle_sway := sin(idle_clock * 1.15) * 0.006 * (1.0 - active_gait)
 		var turn_lean := -turn_weight * lerpf(0.025, 0.055, run_blend)
@@ -397,5 +469,6 @@ func _animate_character(delta: float) -> void:
 		visual_root.rotation.z = turn_lean + idle_sway * 0.35
 		visual_root.rotation.x = start_pitch
 		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * active_gait
+		visual_root.rotation.x += clampf(movement_intent_world.x, -1.0, 1.0) * 0.012
 		var breath := 1.0 + sin(idle_clock * 1.7) * 0.003 * (1.0 - active_gait)
 		visual_root.scale = Vector3(1.0, breath, 1.0)
