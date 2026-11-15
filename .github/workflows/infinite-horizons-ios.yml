@@ -70,6 +70,16 @@ jobs:
               text = text.replace(old, new, 1)
           elif new not in text:
               raise SystemExit("Could not locate iOS export_project_only setting")
+
+          # Godot validates this field even when exporting an Xcode project
+          # that will be compiled with code signing disabled. Use a temporary
+          # syntactically valid placeholder; it is not a signing credential.
+          team_old = 'application/app_store_team_id=""'
+          team_new = 'application/app_store_team_id="0000000000"'
+          if team_old in text:
+              text = text.replace(team_old, team_new, 1)
+          elif team_new not in text:
+              raise SystemExit("Could not locate iOS App Store Team ID setting")
           path.write_text(text)
           PY
           rm -rf game/build/ios-project
