@@ -286,10 +286,10 @@ Do not build, sign or export an IPA. This project deliverable is an Android APK 
 |---|---|---|
 | 1 | 3D world foundation | Source implemented; workflow #47 passed; physical-device visual inspection pending |
 | 2 | Vehicle and driving foundation | Source implemented; workflow #51 passed; physical-device handling inspection pending |
-| 3 | Sialkot geospatial base map | Central-city pilot pipeline implemented; full boundary, coverage validation, streaming and device inspection remain |
+| 3 | Sialkot geospatial base map | Compact Clock Tower / Saddar Bazaar test district source implemented; visual/device validation, full coverage and streaming remain |
 | 4 | Landmarks and shopfronts | Not started |
 | 5 | City streaming and performance | Not started |
-| 6 | Player character and interaction | Not started |
+| 6 | Player character and interaction | Third-person procedural character, movement, camera and vehicle enter/exit source implemented; validation and animation refinement remain |
 | 7 | Traffic, pedestrians and police AI | Not started |
 | 8 | Missions and progression | Not started |
 | 9 | World simulation | Not started |
@@ -424,3 +424,32 @@ During implementation:
 - Husk project documentation: https://github.com/Leviidev/Husk
 
 Keep source dates, licences and attribution with imported data and assets. Re-check external compatibility documentation when making release decisions.
+
+
+## Clock Tower playable testing slice (2026-11-15)
+
+**Status: Source implemented; consolidated Android validation and physical-device visual/handling review pending.**
+
+### Implemented
+- Replaced the broad multi-district blockout with a compact approximately 860 m × 860 m Clock Tower / Saddar Bazaar test district.
+- Added a central Clock Tower traffic island, four-way approach roads, smaller bazaar streets, pedestrian refuge details, streetlights and locally styled low-rise shopfront blocks.
+- Added shopfront facade variation, dark recessed shop bays, signboards, upper-floor glazing, awnings and static building collision.
+- Rebuilt the Clock Tower hero landmark with a stepped stone tower, upper clock chamber, four dial faces, clock hands/ticks, roof cap and collision.
+- Added a procedural third-person player character with capsule movement collision, locally styled jacket/trousers/shoes, head/hair details and simple walk/run limb animation.
+- Added a smoothed over-the-shoulder camera with separate on-foot and vehicle follow modes.
+- Kept the existing four-wheel sedan and added on-foot / driving mode switching, proximity-based enter/exit, keyboard support and touch controls for movement, sprint, throttle, brake and steering.
+- Added a compact field-test HUD identifying the Clock Tower / Saddar test location and current gameplay mode.
+
+### Extra improvements
+- Hidden player collision is disabled while driving and restored on exit.
+- Vehicle is placed beside the initial player spawn to make the first interaction test quick.
+- Test area is deliberately bounded; Cantonment and Mehrajke expansion are removed from this temporary slice so visual review can focus on the landmark and bazaar.
+- Building and tower collision prevent the player/vehicle from passing through major structures.
+
+### Remaining / known limitations
+- Character is a procedural placeholder-quality human model, not a scanned/rigged AAA character; facial detail, proper skeletal animation, clothing simulation and animation blending remain.
+- Clock Tower proportions, dial orientation and shopfront appearance require visual comparison against lawful local reference photos; this is a gameplay blockout, not a verified 1:1 replica.
+- Roads currently rely on the district ground collision rather than individually authored curbs/sidewalk collision.
+- No pedestrians, traffic simulation, interiors, minimap or mission flow in this test slice yet.
+- Run one consolidated Godot parse/startup + Android ARM64 APK validation; then inspect camera framing, character movement, car entry/exit, wheel contact and touch layout on device.
+- Phase 3 and Phase 6 remain incomplete; do not mark either Completed until the remaining validation and full scope gates pass.
