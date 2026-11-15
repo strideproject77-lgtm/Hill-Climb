@@ -13,6 +13,8 @@ var left_leg: Node3D
 var right_leg: Node3D
 var left_knee: Node3D
 var right_knee: Node3D
+var left_ankle: Node3D
+var right_ankle: Node3D
 var left_elbow: Node3D
 var right_elbow: Node3D
 var anim_clock := 0.0
@@ -139,15 +141,21 @@ func _build_character() -> void:
 		lower.radius = 0.115
 		lower.height = 0.48
 		_mesh(knee, lower, Vector3(0, -0.13, 0), trousers)
+		var ankle := Node3D.new()
+		ankle.name = "AnkleJoint"
+		ankle.position = Vector3(0, -0.31, -0.015)
+		knee.add_child(ankle)
 		var foot := BoxMesh.new()
 		foot.size = Vector3(0.23, 0.13, 0.38)
-		_mesh(knee, foot, Vector3(0, -0.36, -0.06), shoes)
+		_mesh(ankle, foot, Vector3(0, -0.045, -0.06), shoes)
 		if side < 0:
 			left_leg = leg
 			left_knee = knee
+			left_ankle = ankle
 		else:
 			right_leg = leg
 			right_knee = knee
+			right_ankle = ankle
 		var arm := Node3D.new()
 		arm.position = Vector3(side * 0.39, 1.52, 0)
 		visual_root.add_child(arm)
@@ -296,12 +304,17 @@ func _build_character() -> void:
 		thumb_part.rotation.z = side * 0.65
 
 func _animate_character(delta: float) -> void:
-	anim_clock += delta * (7.8 if moving_amount > 0.1 else 2.0)
+	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
+	var run_blend := 1.0 if sprinting or Input.is_key_pressed(KEY_SHIFT) else 0.0
+	var cadence := lerpf(6.2, 9.4, run_blend) * clampf(horizontal_speed / maxf(run_speed, 0.01), 0.18, 1.0)
+	anim_clock += delta * cadence
 	var gait := sin(anim_clock)
-	var opposite_gait := sin(anim_clock + PI)
-	var swing := gait * 0.52 * moving_amount
-	var knee_bend := maxf(0.0, cos(anim_clock)) * 0.62 * moving_amount
-	var opposite_knee_bend := maxf(0.0, cos(anim_clock + PI)) * 0.62 * moving_amount
+	var stride_strength := lerpf(0.40, 0.58, run_blend) * moving_amount
+	var swing := gait * stride_strength
+	var knee_bend := maxf(0.0, cos(anim_clock)) * lerpf(0.48, 0.78, run_blend) * moving_amount
+	var opposite_knee_bend := maxf(0.0, cos(anim_clock + PI)) * lerpf(0.48, 0.78, run_blend) * moving_amount
+	var left_lift := maxf(0.0, cos(anim_clock)) * 0.075 * moving_amount
+	var right_lift := maxf(0.0, cos(anim_clock + PI)) * 0.075 * moving_amount
 	if left_leg:
 		left_leg.rotation.x = swing
 	if right_leg:
@@ -310,6 +323,12 @@ func _animate_character(delta: float) -> void:
 		left_knee.rotation.x = knee_bend
 	if right_knee:
 		right_knee.rotation.x = opposite_knee_bend
+	if left_ankle:
+		left_ankle.position.y = -0.31 + left_lift
+		left_ankle.rotation.x = -swing * 0.55 - knee_bend * 0.18
+	if right_ankle:
+		right_ankle.position.y = -0.31 + right_lift
+		right_ankle.rotation.x = swing * 0.55 - opposite_knee_bend * 0.18
 	if left_arm:
 		left_arm.rotation.x = -swing * 0.82
 		left_arm.rotation.z = -0.035 * moving_amount
@@ -321,8 +340,9 @@ func _animate_character(delta: float) -> void:
 	if right_elbow:
 		right_elbow.rotation.x = -0.12 - opposite_knee_bend * 0.30
 	if visual_root:
-		visual_root.position.y = absf(gait) * 0.025 * moving_amount
-		visual_root.rotation.z = sin(anim_clock * 0.5) * 0.018 * moving_amount
+		var turn_amount := clampf(move_axis.x, -1.0, 1.0)
+		visual_root.position.y = absf(gait) * lerpf(0.012, 0.035, run_blend) * moving_amount
+		visual_root.rotation.z = lerpf(0.018, 0.045, run_blend) * turn_amount * moving_amount
 		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * moving_amount
 		var breath := 1.0 + sin(anim_clock * 1.7) * 0.003
 		visual_root.scale = Vector3(1.0, breath, 1.0)
