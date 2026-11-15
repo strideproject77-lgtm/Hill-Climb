@@ -462,3 +462,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Added subtle movement sway and reduced the previous exaggerated vertical bob; added a small idle breathing scale variation.
 - Extra improvements: better facial readability at third-person camera distance and more coherent clothing silhouette without external asset dependencies.
 - Remaining: replace procedural primitive construction with a properly authored, rigged high-detail human mesh; add skeletal walk/run/idle animations, foot planting, facial animation and device-level visual/performance validation. Current work is a detail improvement, not a photorealistic/GTA V-quality character. Phase 6 is not complete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Articulated character movement pass — Source committed; validation pending
+- Reworked the procedural character's limb hierarchy so each leg has a separate knee pivot and each arm has a separate elbow pivot; lower limbs now rotate independently rather than moving as one rigid piece.
+- Added alternating knee flexion, opposing arm swing, slight elbow bend, shoulder counter-sway and subtle torso yaw during locomotion.
+- Improved stride rhythm and reduced the old stiff, straight-leg walking appearance. Existing face, hair, clothing, hand and shoe detail remains in place.
+- Extra improvements: distinct left/right limb animation state, better foot/hand articulation and a more natural idle-to-walk transition using the existing movement blend.
+- Remaining: replace procedural primitives with a high-quality authored human mesh and a true Skeleton3D/skinned rig; add polished walk/run/idle animation clips, foot planting, turning, facial animation and device performance validation. This procedural pass is not photorealistic and Phase 6 remains incomplete.
