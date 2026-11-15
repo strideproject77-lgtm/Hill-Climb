@@ -19,6 +19,7 @@ var left_elbow: Node3D
 var right_elbow: Node3D
 var anim_clock := 0.0
 var moving_amount := 0.0
+var grounded_amount := 1.0
 
 func _ready() -> void:
 	name = "PlayerCharacter"
@@ -60,6 +61,7 @@ func _physics_process(delta: float) -> void:
 		rotation.y = lerp_angle(rotation.y, atan2(-world_direction.x, -world_direction.z), 1.0 - exp(-delta * 11.0))
 	moving_amount = move_toward(moving_amount, 1.0 if world_direction.length() > 0.08 else 0.0, delta * 5.0)
 	move_and_slide()
+	grounded_amount = move_toward(grounded_amount, 1.0 if is_on_floor() else 0.0, delta * 8.0)
 	_animate_character(delta)
 
 func _add_collision() -> void:
@@ -305,16 +307,23 @@ func _build_character() -> void:
 
 func _animate_character(delta: float) -> void:
 	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
-	var run_blend := 1.0 if sprinting or Input.is_key_pressed(KEY_SHIFT) else 0.0
-	var cadence := lerpf(6.2, 9.4, run_blend) * clampf(horizontal_speed / maxf(run_speed, 0.01), 0.18, 1.0)
+	var run_blend := 1.0 if (sprinting or Input.is_key_pressed(KEY_SHIFT)) and horizontal_speed > walk_speed * 0.72 else 0.0
+	var speed_ratio := clampf(horizontal_speed / maxf(run_speed, 0.01), 0.0, 1.0)
+	var active_gait := moving_amount * grounded_amount
+	var cadence := lerpf(6.2, 9.4, run_blend) * lerpf(0.55, 1.0, speed_ratio)
 	anim_clock += delta * cadence
 	var gait := sin(anim_clock)
-	var stride_strength := lerpf(0.40, 0.58, run_blend) * moving_amount
+	var left_phase := cos(anim_clock)
+	var right_phase := cos(anim_clock + PI)
+	var stride_strength := lerpf(0.40, 0.58, run_blend) * active_gait
 	var swing := gait * stride_strength
-	var knee_bend := maxf(0.0, cos(anim_clock)) * lerpf(0.48, 0.78, run_blend) * moving_amount
-	var opposite_knee_bend := maxf(0.0, cos(anim_clock + PI)) * lerpf(0.48, 0.78, run_blend) * moving_amount
-	var left_lift := maxf(0.0, cos(anim_clock)) * 0.075 * moving_amount
-	var right_lift := maxf(0.0, cos(anim_clock + PI)) * 0.075 * moving_amount
+	var knee_bend := maxf(0.0, left_phase) * lerpf(0.48, 0.78, run_blend) * active_gait
+	var opposite_knee_bend := maxf(0.0, right_phase) * lerpf(0.48, 0.78, run_blend) * active_gait
+	# Lift only the swing-phase foot; keep the stance-phase foot close to the ground.
+	var left_lift := pow(maxf(0.0, left_phase), 1.35) * lerpf(0.055, 0.095, run_blend) * active_gait
+	var right_lift := pow(maxf(0.0, right_phase), 1.35) * lerpf(0.055, 0.095, run_blend) * active_gait
+	var left_toe_roll := maxf(0.0, -left_phase) * 0.16 * active_gait
+	var right_toe_roll := maxf(0.0, -right_phase) * 0.16 * active_gait
 	if left_leg:
 		left_leg.rotation.x = swing
 	if right_leg:
@@ -325,24 +334,24 @@ func _animate_character(delta: float) -> void:
 		right_knee.rotation.x = opposite_knee_bend
 	if left_ankle:
 		left_ankle.position.y = -0.31 + left_lift
-		left_ankle.rotation.x = -swing * 0.55 - knee_bend * 0.18
+		left_ankle.rotation.x = -swing * 0.48 - knee_bend * 0.12 + left_toe_roll
 	if right_ankle:
 		right_ankle.position.y = -0.31 + right_lift
-		right_ankle.rotation.x = swing * 0.55 - opposite_knee_bend * 0.18
+		right_ankle.rotation.x = swing * 0.48 - opposite_knee_bend * 0.12 + right_toe_roll
 	if left_arm:
 		left_arm.rotation.x = -swing * 0.82
-		left_arm.rotation.z = -0.035 * moving_amount
+		left_arm.rotation.z = -0.035 * active_gait
 	if right_arm:
 		right_arm.rotation.x = swing * 0.82
-		right_arm.rotation.z = 0.035 * moving_amount
+		right_arm.rotation.z = 0.035 * active_gait
 	if left_elbow:
 		left_elbow.rotation.x = -0.12 - knee_bend * 0.30
 	if right_elbow:
 		right_elbow.rotation.x = -0.12 - opposite_knee_bend * 0.30
 	if visual_root:
 		var turn_amount := clampf(move_axis.x, -1.0, 1.0)
-		visual_root.position.y = absf(gait) * lerpf(0.012, 0.035, run_blend) * moving_amount
-		visual_root.rotation.z = lerpf(0.018, 0.045, run_blend) * turn_amount * moving_amount
-		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * moving_amount
+		visual_root.position.y = absf(gait) * lerpf(0.012, 0.035, run_blend) * active_gait
+		visual_root.rotation.z = lerpf(0.018, 0.045, run_blend) * turn_amount * active_gait
+		visual_root.rotation.y = sin(anim_clock * 0.5) * 0.025 * active_gait
 		var breath := 1.0 + sin(anim_clock * 1.7) * 0.003
 		visual_root.scale = Vector3(1.0, breath, 1.0)
