@@ -217,3 +217,14 @@ Track the vertical playable slice separately from total planned content. Count o
 - Extra improvements: probe offsets follow the character's world orientation; normals are normalized and flipped to the upward hemisphere before averaging; per-foot smoothing remains independent.
 - Scope boundary: this improves multi-point procedural foot contact only. It is not a planted-foot lock, a two-bone IK solver, or a replacement for an authored weighted character rig.
 - Remaining Phase 6 work: proper authored 3D human mesh and weighted Skeleton3D, animation clips/blending, full foot-locking IK, interaction prompts/doors and reliable vehicle transition polish. Run the planned consolidated Godot parse/startup and Android validation once the phase batch is ready. No IPA build/sign/export was performed.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Analog on-foot joystick and character refinement — Source implemented; validation pending
+- Added an analog virtual joystick for on-foot movement, with a movable thumb control, dead zone, normalized diagonal movement, multi-touch-friendly separate sprint and vehicle controls, and release-to-neutral behavior.
+- Replaced the four directional walk buttons with the joystick; the joystick is hidden during driving and restored on foot.
+- Added layered pelvis/abdomen/chest silhouette shaping and subtle upper-body counter-rotation.
+- Fixed shoe hierarchy so toe, lace and sole details follow the ankle pivots instead of remaining static at the character root.
+- Extra improvements: desktop mouse joystick emulation and smoother analog input around the center.
+- Limitation: character remains procedural geometry; authored photorealistic model, weighted Skeleton3D, mocap-quality clips and true two-bone foot IK are not implemented. No authored character asset was available in the repository asset tree.
+- No tests/workflows were run; consolidated validation remains pending. No IPA build/sign/export was performed.
