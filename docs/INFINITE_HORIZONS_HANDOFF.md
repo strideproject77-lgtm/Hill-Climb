@@ -498,3 +498,12 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Added acceleration-aware forward body pitch and a separate low-amplitude idle sway/breathing clock; idle motion settles independently from the walking gait.
 - Extra improvements: more reliable turning response for camera-relative touch and keyboard movement, smoother stop/start blending, and less idle animation dependence on the locomotion clock.
 - Remaining: authored high-detail human mesh, genuinely skinned Skeleton3D rig, polished animation clips, foot-locking IK, facial animation, and consolidated Godot/Android plus device validation. Procedural geometry remains a placeholder-quality model; Phase 6 is incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Wrist hierarchy and hand-animation integration — Source committed; validation pending
+- Added independent wrist pivots beneath both elbow joints and attached the palm geometry to the wrist nodes.
+- Rebuilt finger and thumb geometry in wrist-local space, correcting the previous issue where digits were positioned directly under the character root and did not follow arm movement.
+- Added restrained wrist counter-motion during gait so palms and fingers follow the forearm rather than remaining visually detached.
+- Extra improvements: corrected hand alignment, improved left/right hand symmetry and kept the additional animation lightweight with no external assets.
+- Remaining: authored high-detail human mesh, truly skinned Skeleton3D rig, polished animation clips, hand/finger posing, foot-locking IK, facial animation and consolidated Godot/Android plus device validation. This is still a procedural character; Phase 6 remains incomplete.
