@@ -198,3 +198,12 @@ Track the vertical playable slice separately from total planned content. Count o
 - Ground tilt fades during the swing phase and is combined with the existing walk/run ankle motion; airborne/no-hit frames ease the target back toward neutral.
 - Extra improvements: separate left/right contact state, bounded angular response to reduce sudden rotations, and preserved the existing low-cost raycast approach for mobile.
 - Limitations: this is slope-aware procedural contact, not a true foot-locking or two-bone IK solver. A high-detail authored human mesh, weighted Skeleton3D rig, authored animation clips, full facial/hand posing and consolidated Godot/Android/device validation remain outstanding. Phase 6 remains incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Responsive facial expression and hand posing — Source committed; validation pending
+- Added eyebrow node references and subtle brow tension driven by movement exertion and acceleration.
+- Facial expression now responds to sprint effort with restrained eye narrowing and mouth shape changes, while preserving timed blinking and gaze tracking.
+- Added references for each procedural finger mesh and a small exertion-based finger curl so hands no longer remain completely static during faster movement.
+- Extra improvements: expression values are bounded and lightweight; all changes reuse existing geometry and avoid per-frame node creation.
+- Limitations: these are procedural expression/pose controls, not facial blendshapes or a true hand skeleton. A high-detail authored character, weighted Skeleton3D rig, authored animation clips, full two-bone foot-locking IK and consolidated Godot/Android/device validation remain outstanding. Phase 6 remains incomplete.
