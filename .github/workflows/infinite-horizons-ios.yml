@@ -80,6 +80,17 @@ jobs:
               text = text.replace(team_old, team_new, 1)
           elif team_new not in text:
               raise SystemExit("Could not locate iOS App Store Team ID setting")
+
+          # Godot signs embedded dynamic libraries during iOS project export.
+          # Use an ad-hoc identity for those binaries only; Xcode still builds
+          # the final app with signing disabled and without a provisioning profile.
+          for key in ("application/code_sign_identity_debug", "application/code_sign_identity_release"):
+              old_identity = key + '=""'
+              new_identity = key + '="-"'
+              if old_identity in text:
+                  text = text.replace(old_identity, new_identity, 1)
+              elif new_identity not in text:
+                  raise SystemExit("Could not configure ad-hoc identity for " + key)
           path.write_text(text)
           PY
           rm -rf game/build/ios-project
