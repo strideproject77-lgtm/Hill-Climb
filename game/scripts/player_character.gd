@@ -25,6 +25,10 @@ var right_eye: MeshInstance3D
 var left_pupil: MeshInstance3D
 var right_pupil: MeshInstance3D
 var mouth_detail: MeshInstance3D
+var left_eyebrow: MeshInstance3D
+var right_eyebrow: MeshInstance3D
+var left_fingers: Array[MeshInstance3D] = []
+var right_fingers: Array[MeshInstance3D] = []
 var facial_clock := 0.0
 var blink_amount := 0.0
 var next_blink_at := 2.8
@@ -284,6 +288,10 @@ func _build_character() -> void:
 		brow.size = Vector3(0.09, 0.025, 0.035)
 		var brow_part := _mesh(visual_root, brow, Vector3(side * 0.079, 2.065, -0.215), hair)
 		brow_part.rotation.z = side * -0.10
+		if side < 0.0:
+			left_eyebrow = brow_part
+		else:
+			right_eyebrow = brow_part
 		var ear_inner := SphereMesh.new()
 		ear_inner.radius = 0.027
 		ear_inner.height = 0.06
@@ -355,6 +363,10 @@ func _build_character() -> void:
 			var finger_x := (float(finger) - 1.5) * 0.043
 			var finger_part := _mesh(wrist, digit, Vector3(finger_x, -0.055, -0.035), skin)
 			finger_part.rotation.x = -0.12
+			if side < 0.0:
+				left_fingers.append(finger_part)
+			else:
+				right_fingers.append(finger_part)
 		var thumb := CapsuleMesh.new()
 		thumb.radius = 0.022
 		thumb.height = 0.09
@@ -419,7 +431,8 @@ func _animate_face(delta: float, active_gait: float) -> void:
 		blink_amount = 1.0
 		next_blink_at = facial_clock + 2.4 + fmod(facial_clock * 1.73, 2.1)
 	blink_amount = move_toward(blink_amount, 0.0, delta * 11.0)
-	var eye_height := maxf(0.12, 1.0 - blink_amount * 0.92)
+	var exertion := clampf((Vector2(velocity.x, velocity.z).length() - walk_speed * 0.72) / maxf(run_speed - walk_speed * 0.72, 0.01), 0.0, 1.0)
+	var eye_height := maxf(0.12, 1.0 - blink_amount * 0.92 - exertion * 0.08)
 	if left_eye:
 		left_eye.scale.y = eye_height
 	if right_eye:
@@ -432,8 +445,21 @@ func _animate_face(delta: float, active_gait: float) -> void:
 	if right_pupil:
 		right_pupil.position.x = 0.078 + gaze_x
 		right_pupil.position.y = 0.254 + gaze_y
+	# Brows and mouth respond subtly to exertion, avoiding a permanently static face.
+	var brow_tension := exertion * 0.055 + locomotion_accel * 0.025
+	if left_eyebrow:
+		left_eyebrow.rotation.z = -0.10 + brow_tension
+	if right_eyebrow:
+		right_eyebrow.rotation.z = 0.10 - brow_tension
 	if mouth_detail:
-		mouth_detail.scale.x = 1.0 + sin(facial_clock * 0.8) * 0.025 * (1.0 - active_gait)
+		mouth_detail.scale.x = 1.0 + exertion * 0.10 + sin(facial_clock * 0.8) * 0.018 * (1.0 - active_gait)
+		mouth_detail.scale.y = 1.0 + exertion * 0.16
+	# Small finger curl adds a restrained hand response during faster movement.
+	var finger_curl := exertion * 0.10 + active_gait * 0.025
+	for finger in left_fingers:
+		finger.rotation.x = -0.12 - finger_curl
+	for finger in right_fingers:
+		finger.rotation.x = -0.12 - finger_curl
 
 
 func _animate_character(delta: float) -> void:
