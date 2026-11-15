@@ -340,7 +340,8 @@ func _add_wheel(at: Vector3, steering_wheel: bool, traction_wheel: bool, wheel_n
 		var spoke_mesh := BoxMesh.new()
 		spoke_mesh.size = Vector3(0.035,0.22,0.035)
 		spoke.mesh = spoke_mesh
-		spoke.position = Vector3(0.0,0.0,0.0)
-		spoke.rotation.z = TAU * float(spoke_index) / 10.0
+		var spoke_angle := TAU * float(spoke_index) / 10.0
+		spoke.position = Vector3(0.0,sin(spoke_angle) * 0.11,cos(spoke_angle) * 0.11)
+		spoke.rotation.x = spoke_angle
 		spoke.material_override = _paint(Color("#c3cbd0"),0.9,0.19)
 		wheel.add_child(spoke)
