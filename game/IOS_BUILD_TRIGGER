@@ -11,3 +11,4 @@ Verbose iOS export diagnostics and explicit Xcode toolchain selection — 2026-1
 Fix xcode-select root permission using sudo — 2026-11-15T12:05:00+05:00
 Fix macOS codesign availability check; resume unsigned IPA export — 2026-11-15T16:15:00+05:00
 Retry unsigned iOS export with captured Godot editor log and codesign stderr — 2026-11-15T16:30:00+05:00
+Unsigned IPA retry after correcting Godot .xcodeproj discovery path — 2026-11-15T13:02+05:00
