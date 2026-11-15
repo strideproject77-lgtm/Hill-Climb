@@ -17,6 +17,8 @@ var left_ankle: Node3D
 var right_ankle: Node3D
 var left_elbow: Node3D
 var right_elbow: Node3D
+var left_wrist: Node3D
+var right_wrist: Node3D
 var anim_clock := 0.0
 var moving_amount := 0.0
 var grounded_amount := 1.0
@@ -192,16 +194,22 @@ func _build_character() -> void:
 		forearm.radius = 0.095
 		forearm.height = 0.42
 		_mesh(elbow, forearm, Vector3(0, -0.14, -0.015), skin)
+		var wrist := Node3D.new()
+		wrist.name = "WristJoint"
+		wrist.position = Vector3(0, -0.36, -0.02)
+		elbow.add_child(wrist)
 		var hand := SphereMesh.new()
 		hand.radius = 0.095
 		hand.height = 0.16
-		_mesh(elbow, hand, Vector3(0, -0.38, -0.02), skin)
+		_mesh(wrist, hand, Vector3(0, -0.015, -0.015), skin)
 		if side < 0:
 			left_arm = arm
 			left_elbow = elbow
+			left_wrist = wrist
 		else:
 			right_arm = arm
 			right_elbow = elbow
+			right_wrist = wrist
 	# Small collar and jacket zipper details improve silhouette readability.
 	var collar := BoxMesh.new()
 	collar.size = Vector3(0.22, 0.07, 0.12)
@@ -311,18 +319,23 @@ func _build_character() -> void:
 			var lace_mesh := BoxMesh.new()
 			lace_mesh.size = Vector3(0.13, 0.012, 0.018)
 			_mesh(visual_root, lace_mesh, Vector3(side * 0.17, 0.145 + float(lace) * 0.018, -0.19 + float(lace) * 0.045), trim)
-	# Individual fingers and thumbs make the hands less mitten-like.
+	# Fingers and thumbs are attached to each wrist so they follow arm motion.
 	for side in [-1.0, 1.0]:
+		var wrist := left_wrist if side < 0.0 else right_wrist
+		if wrist == null:
+			continue
 		for finger in range(4):
 			var digit := CapsuleMesh.new()
 			digit.radius = 0.018
 			digit.height = 0.105
-			_mesh(visual_root, digit, Vector3(side * (0.435 + float(finger) * 0.025), 0.66, -0.045), skin)
+			var finger_x := (float(finger) - 1.5) * 0.043
+			var finger_part := _mesh(wrist, digit, Vector3(finger_x, -0.055, -0.035), skin)
+			finger_part.rotation.x = -0.12
 		var thumb := CapsuleMesh.new()
 		thumb.radius = 0.022
 		thumb.height = 0.09
-		var thumb_part := _mesh(visual_root, thumb, Vector3(side * 0.34, 0.70, -0.095), skin)
-		thumb_part.rotation.z = side * 0.65
+		var thumb_part := _mesh(wrist, thumb, Vector3(side * 0.085, -0.015, -0.015), skin)
+		thumb_part.rotation.z = -side * 0.65
 
 func _animate_character(delta: float) -> void:
 	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
@@ -369,6 +382,13 @@ func _animate_character(delta: float) -> void:
 		left_elbow.rotation.x = -0.12 - knee_bend * 0.30
 	if right_elbow:
 		right_elbow.rotation.x = -0.12 - opposite_knee_bend * 0.30
+	# Subtle wrist counter-motion keeps hands aligned with the forearm swing.
+	if left_wrist:
+		left_wrist.rotation.x = 0.10 + swing * 0.12
+		left_wrist.rotation.z = -0.035 * active_gait
+	if right_wrist:
+		right_wrist.rotation.x = 0.10 - swing * 0.12
+		right_wrist.rotation.z = 0.035 * active_gait
 	if visual_root:
 		var idle_sway := sin(idle_clock * 1.15) * 0.006 * (1.0 - active_gait)
 		var turn_lean := -turn_weight * lerpf(0.025, 0.055, run_blend)
