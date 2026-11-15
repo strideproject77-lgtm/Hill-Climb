@@ -146,3 +146,12 @@ Track the vertical playable slice separately from total planned content. Count o
 - Added restrained turn lean from horizontal movement input and separate walk/run body bob tuning.
 - Extra improvements: idle motion is kept subtle, gait responds to actual horizontal speed, and the changes remain asset-free and mobile-conscious.
 - Remaining: precise foot planting/contact, high-quality authored human mesh, true Skeleton3D/skinned rig, polished walk/run/idle clips, facial animation and device-level performance/visual validation. This is still a procedural character, not photorealistic. Phase 6 remains incomplete.
+
+
+## Progress entry — 2026-11-15
+### Phase 6 — Ground-aware foot contact and gait polish — Source committed; validation pending
+- Added a smoothed grounded animation weight driven by the character's actual floor-contact state; airborne movement fades out the grounded gait rather than continuing a full walk cycle.
+- Refined alternating swing-foot lift with a separate stance phase, softer lift curves and toe-off ankle roll.
+- Walk/run blend now depends on sprint input plus actual horizontal speed, and cadence scales with movement speed.
+- Extra improvements: reduced accidental run animation while nearly stationary, made airborne limb motion less exaggerated and kept foot contact motion lightweight/procedural.
+- Remaining: this is an approximation, not physics-based foot locking. True planted-foot IK, a high-quality authored human mesh, a fully skinned Skeleton3D rig, polished animation clips, facial animation and device validation remain. Phase 6 is incomplete.
