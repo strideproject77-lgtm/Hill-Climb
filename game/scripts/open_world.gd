@@ -70,13 +70,13 @@ func _setup_environment() -> void:
 func _spawn_vehicle() -> void:
 	vehicle = StrideVehicle.new()
 	vehicle.name = "ClockTowerTestSedan"
-	vehicle.position = Vector3(-18.0,1.2,42.0)
+	vehicle.position = Vector3(18.0,1.0,28.0)
 	vehicle.rotation.y = PI
 	add_child(vehicle)
 
 func _spawn_player() -> void:
 	player = PlayerScript.new()
-	player.position = Vector3(5.0,0.15,1.5)
+	player.position = Vector3(10.0,0.15,16.0)
 	add_child(player)
 
 func _setup_camera() -> void:
@@ -215,12 +215,14 @@ func _update_player_input() -> void:
 
 func _toggle_vehicle() -> void:
 	if not driving:
-		if player.global_position.distance_to(vehicle.global_position) > 5.5:
+		if player.global_position.distance_to(vehicle.global_position) > 14.5:
 			mode_label.text = "MOVE CLOSER TO THE SEDAN"
 			return
 		driving = true
 		player.visible = false
 		player.set_physics_process(false)
+		player.collision_layer = 0
+		player.collision_mask = 0
 		vehicle.freeze = false
 		vehicle.sleeping = false
 	else:
@@ -232,6 +234,8 @@ func _toggle_vehicle() -> void:
 		player.velocity = Vector3.ZERO
 		player.visible = true
 		player.set_physics_process(true)
+		player.collision_layer = 1
+		player.collision_mask = 1
 		vehicle.set_drive_controls(0.0,0.0,0.0)
 	_update_mode_ui()
 
