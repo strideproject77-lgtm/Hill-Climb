@@ -14,6 +14,8 @@ var driving := false
 var hud_root: Control
 var camera_distance := 7.8
 var held_controls: Dictionary = {}
+var move_joystick: Control
+var joystick_axis := Vector2.ZERO
 
 func _ready() -> void:
 	_setup_environment()
@@ -141,16 +143,30 @@ func _setup_mobile_hud() -> void:
 	mode_label.add_theme_font_size_override("font_size",12)
 	mode_label.add_theme_color_override("font_color",Color("#e7d5b8"))
 	hud_root.add_child(mode_label)
-	_add_button("MOVE FORWARD","▲",Vector2(24,-198),Vector2(104,-130),false,"forward")
-	_add_button("MOVE BACK","▼",Vector2(24,-112),Vector2(104,-44),false,"back")
-	_add_button("MOVE LEFT","◀",Vector2(112,-112),Vector2(192,-44),false,"left")
-	_add_button("MOVE RIGHT","▶",Vector2(112,-198),Vector2(192,-130),false,"right")
+	_add_virtual_joystick()
 	_add_button("SPRINT","RUN",Vector2(208,-94),Vector2(292,-28),false,"sprint")
 	_add_button("VEHICLE GAS","ACCELERATE",Vector2(-142,-164),Vector2(-24,-62),true,"throttle")
 	_add_button("VEHICLE BRAKE","BRAKE",Vector2(-142,-54),Vector2(-24,48),true,"brake")
 	_add_button("VEHICLE LEFT","◀",Vector2(24,-110),Vector2(112,-26),false,"car_left")
 	_add_button("VEHICLE RIGHT","▶",Vector2(120,-110),Vector2(208,-26),false,"car_right")
 	_add_button("ENTER OR EXIT","ENTER CAR",Vector2(-170,-220),Vector2(-22,-158),true,"interact")
+
+func _add_virtual_joystick() -> void:
+	var pad := VirtualJoystick.new()
+	pad.name = "OnFootVirtualJoystick"
+	pad.custom_minimum_size = Vector2(168,168)
+	pad.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	pad.offset_left = 22
+	pad.offset_top = -190
+	pad.offset_right = 190
+	pad.offset_bottom = -22
+	pad.axis_changed.connect(_on_joystick_changed)
+	hud_root.add_child(pad)
+	move_joystick = pad
+
+func _on_joystick_changed(axis: Vector2) -> void:
+	joystick_axis = axis
+	_update_player_input()
 
 func _add_button(accessible_name: String, caption: String, top_left: Vector2, bottom_right: Vector2, right_side: bool, control_name: String) -> void:
 	var button := Button.new()
@@ -181,8 +197,10 @@ func _add_button(accessible_name: String, caption: String, top_left: Vector2, bo
 	control_buttons[control_name] = button
 
 func _update_mode_ui() -> void:
-	for key in ["forward","back","left","right","sprint"]:
+	for key in ["sprint"]:
 		control_buttons[key].visible = not driving
+	if is_instance_valid(move_joystick):
+		move_joystick.visible = not driving
 	for key in ["throttle","brake","car_left","car_right"]:
 		control_buttons[key].visible = driving
 	control_buttons["interact"].text = "EXIT VEHICLE" if driving else "ENTER VEHICLE"
@@ -212,9 +230,7 @@ func _update_vehicle_input() -> void:
 	vehicle.set_drive_controls(throttle,braking,steer)
 
 func _update_player_input() -> void:
-	var x := float(bool(held_controls.get("right",false))) - float(bool(held_controls.get("left",false)))
-	var y := float(bool(held_controls.get("back",false))) - float(bool(held_controls.get("forward",false)))
-	player.set_move_input(Vector2(x,y),bool(held_controls.get("sprint",false)))
+	player.set_move_input(joystick_axis,bool(held_controls.get("sprint",false)))
 
 func _toggle_vehicle() -> void:
 	if not driving:
@@ -241,6 +257,69 @@ func _toggle_vehicle() -> void:
 		player.collision_mask = 1
 		vehicle.set_drive_controls(0.0,0.0,0.0)
 	_update_mode_ui()
+
+class VirtualJoystick extends Control:
+	signal axis_changed(axis: Vector2)
+	var axis := Vector2.ZERO
+	var active_touch := -1
+	var mouse_active := false
+	var knob_center := Vector2.ZERO
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		focus_mode = Control.FOCUS_NONE
+		queue_redraw()
+
+	func _draw() -> void:
+		var center := size * 0.5
+		var radius := minf(size.x,size.y) * 0.43
+		draw_circle(center + Vector2(0,4),radius + 2.0,Color(0,0,0,0.22))
+		draw_circle(center,radius,Color("#111d24",0.72))
+		draw_arc(center,radius,0.0,TAU,64,Color("#c6a276",0.9),2.2,true)
+		draw_arc(center,radius * 0.68,0.0,TAU,48,Color("#e8d6bb",0.18),1.0,true)
+		var knob := center + axis * radius * 0.68
+		draw_circle(knob, radius * 0.34, Color("#8c6948",0.94))
+		draw_arc(knob,radius * 0.34,0.0,TAU,48,Color("#f0d7b0",0.95),2.0,true)
+		draw_circle(knob + Vector2(-radius*0.08,-radius*0.09),radius*0.055,Color("#fff0d8",0.55))
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventScreenTouch:
+			var touch := event as InputEventScreenTouch
+			if touch.pressed and active_touch == -1 and Rect2(Vector2.ZERO,size).has_point(touch.position):
+				active_touch = touch.index
+				_set_from_position(touch.position)
+				accept_event()
+			elif not touch.pressed and touch.index == active_touch:
+				active_touch = -1
+				_set_axis(Vector2.ZERO)
+				accept_event()
+		elif event is InputEventScreenDrag and (event as InputEventScreenDrag).index == active_touch:
+			_set_from_position((event as InputEventScreenDrag).position)
+			accept_event()
+		elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed and Rect2(Vector2.ZERO,size).has_point(event.position):
+				mouse_active = true
+				_set_from_position(event.position)
+				accept_event()
+			elif not event.pressed and mouse_active:
+				mouse_active = false
+				_set_axis(Vector2.ZERO)
+				accept_event()
+		elif event is InputEventMouseMotion and mouse_active:
+			_set_from_position(event.position)
+			accept_event()
+
+	func _set_from_position(point: Vector2) -> void:
+		var radius := minf(size.x,size.y) * 0.43
+		var raw := (point - size * 0.5) / maxf(radius,1.0)
+		_set_axis(raw.limit_length(1.0))
+
+	func _set_axis(value: Vector2) -> void:
+		var next_axis := Vector2.ZERO if value.length() < 0.12 else value
+		if next_axis.distance_to(axis) > 0.005:
+			axis = next_axis
+			axis_changed.emit(axis)
+			queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
