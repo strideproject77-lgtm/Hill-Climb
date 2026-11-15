@@ -188,6 +188,97 @@ func _build_character() -> void:
 		sole.size = Vector3(0.24, 0.045, 0.40)
 		_mesh(visual_root, sole, Vector3(side * 0.17, 0.035, -0.075), trim)
 
+
+	# Face shaping: brows, nose, lips and inner ear details.
+	var lip_mat := _material(Color("#754b3e"), 0.72)
+	var nose_bridge := CapsuleMesh.new()
+	nose_bridge.radius = 0.035
+	nose_bridge.height = 0.13
+	_mesh(visual_root, nose_bridge, Vector3(0, 1.965, -0.225), skin)
+	var nose_tip := SphereMesh.new()
+	nose_tip.radius = 0.043
+	nose_tip.height = 0.055
+	_mesh(visual_root, nose_tip, Vector3(0, 1.925, -0.25), skin)
+	var mouth := BoxMesh.new()
+	mouth.size = Vector3(0.105, 0.018, 0.018)
+	_mesh(visual_root, mouth, Vector3(0, 1.875, -0.226), lip_mat)
+	for side in [-1.0, 1.0]:
+		var brow := BoxMesh.new()
+		brow.size = Vector3(0.09, 0.025, 0.035)
+		var brow_part := _mesh(visual_root, brow, Vector3(side * 0.079, 2.065, -0.215), hair)
+		brow_part.rotation.z = side * -0.10
+		var ear_inner := SphereMesh.new()
+		ear_inner.radius = 0.027
+		ear_inner.height = 0.06
+		_mesh(visual_root, ear_inner, Vector3(side * 0.258, 1.99, -0.012), lip_mat)
+	# Hairline, sideburns and rear hair form a complete head silhouette.
+	var hairline := BoxMesh.new()
+	hairline.size = Vector3(0.30, 0.055, 0.055)
+	_mesh(visual_root, hairline, Vector3(0, 2.105, -0.198), hair)
+	for side in [-1.0, 1.0]:
+		var sideburn := CapsuleMesh.new()
+		sideburn.radius = 0.045
+		sideburn.height = 0.19
+		_mesh(visual_root, sideburn, Vector3(side * 0.218, 2.015, -0.015), hair)
+	var rear_hair := SphereMesh.new()
+	rear_hair.radius = 0.225
+	rear_hair.height = 0.36
+	_mesh(visual_root, rear_hair, Vector3(0, 2.025, 0.105), hair)
+	# Jacket lapels, shoulder shaping, pocket flaps and buttons.
+	var lapel := BoxMesh.new()
+	lapel.size = Vector3(0.105, 0.29, 0.045)
+	var lapel_left := _mesh(visual_root, lapel, Vector3(-0.105, 1.54, -0.304), shirt_light)
+	lapel_left.rotation.z = -0.20
+	var lapel_right := _mesh(visual_root, lapel, Vector3(0.105, 1.54, -0.304), shirt_light)
+	lapel_right.rotation.z = 0.20
+	for side in [-1.0, 1.0]:
+		var shoulder := SphereMesh.new()
+		shoulder.radius = 0.19
+		shoulder.height = 0.28
+		_mesh(visual_root, shoulder, Vector3(side * 0.31, 1.49, 0), shirt)
+		var pocket_flap := BoxMesh.new()
+		pocket_flap.size = Vector3(0.15, 0.045, 0.035)
+		_mesh(visual_root, pocket_flap, Vector3(side * 0.19, 1.39, -0.359), shirt_light)
+		var pocket_button := SphereMesh.new()
+		pocket_button.radius = 0.018
+		pocket_button.height = 0.018
+		_mesh(visual_root, pocket_button, Vector3(side * 0.19, 1.365, -0.382), trim)
+	# Belt, buckle, trouser fly, knee panels and shoe construction.
+	var belt := BoxMesh.new()
+	belt.size = Vector3(0.55, 0.075, 0.36)
+	_mesh(visual_root, belt, Vector3(0, 0.91, 0), hair)
+	var buckle := BoxMesh.new()
+	buckle.size = Vector3(0.105, 0.065, 0.025)
+	_mesh(visual_root, buckle, Vector3(0, 0.91, -0.19), trim)
+	var fly := BoxMesh.new()
+	fly.size = Vector3(0.018, 0.24, 0.018)
+	_mesh(visual_root, fly, Vector3(0, 0.72, -0.17), shirt_light)
+	for side in [-1.0, 1.0]:
+		var knee_panel := BoxMesh.new()
+		knee_panel.size = Vector3(0.19, 0.19, 0.035)
+		_mesh(visual_root, knee_panel, Vector3(side * 0.17, 0.43, -0.108), trousers)
+		var shoe_toe := SphereMesh.new()
+		shoe_toe.radius = 0.12
+		shoe_toe.height = 0.11
+		var toe_part := _mesh(visual_root, shoe_toe, Vector3(side * 0.17, 0.105, -0.245), shoes)
+		toe_part.scale = Vector3(1.0, 0.72, 1.5)
+		for lace in range(3):
+			var lace_mesh := BoxMesh.new()
+			lace_mesh.size = Vector3(0.13, 0.012, 0.018)
+			_mesh(visual_root, lace_mesh, Vector3(side * 0.17, 0.145 + float(lace) * 0.018, -0.19 + float(lace) * 0.045), trim)
+	# Individual fingers and thumbs make the hands less mitten-like.
+	for side in [-1.0, 1.0]:
+		for finger in range(4):
+			var digit := CapsuleMesh.new()
+			digit.radius = 0.018
+			digit.height = 0.105
+			_mesh(visual_root, digit, Vector3(side * (0.435 + float(finger) * 0.025), 0.66, -0.045), skin)
+		var thumb := CapsuleMesh.new()
+		thumb.radius = 0.022
+		thumb.height = 0.09
+		var thumb_part := _mesh(visual_root, thumb, Vector3(side * 0.34, 0.70, -0.095), skin)
+		thumb_part.rotation.z = side * 0.65
+
 func _animate_character(delta: float) -> void:
 	anim_clock += delta * (7.8 if moving_amount > 0.1 else 2.0)
 	var swing := sin(anim_clock) * 0.48 * moving_amount
@@ -200,4 +291,7 @@ func _animate_character(delta: float) -> void:
 	if right_arm:
 		right_arm.rotation.x = swing * 0.72
 	if visual_root:
-		visual_root.position.y = absf(sin(anim_clock * 2.0)) * 0.035 * moving_amount
+		visual_root.position.y = absf(sin(anim_clock * 2.0)) * 0.018 * moving_amount
+		visual_root.rotation.z = sin(anim_clock * 0.5) * 0.012 * moving_amount
+		var breath := 1.0 + sin(anim_clock * 1.7) * 0.003
+		visual_root.scale = Vector3(1.0, breath, 1.0)
