@@ -208,7 +208,7 @@ jobs:
       - name: Upload IPA and build report
         uses: actions/upload-artifact@v4
         with:
-          name: Infinite-Horizons-unsigned-iOS-\${{ github.run_number }}
+          name: Infinite-Horizons-unsigned-iOS-${{ github.run_number }}
           path: |
             Infinite-Horizons-unsigned.ipa
             Infinite-Horizons-Build-Report.txt
