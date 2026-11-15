@@ -575,3 +575,13 @@ Keep source dates, licences and attribution with imported data and assets. Re-ch
 - Extra improvements: door-transition lock prevents repeated enter/exit triggers; driver approach and exit positions are aligned to the same side; steering wheel turns with the steering input; wheel spokes are aligned to the wheel face.
 - Important asset limitation: no imported BMW M4 mesh/model was present in the repository asset tree. This batch creates an original M4-inspired procedural coupe, not an authentic/licensed BMW M4 model or a photorealistic external asset. Do not label it as the official BMW model.
 - Remaining: integrate a properly licensed high-detail coupe GLB/GLTF with separate door meshes and correct pivots; improve interior dashboard/instruments, mirrors, glass/reflections, lights and tire contact; refine true seated hand-to-wheel alignment; tune suspension/tyre physics; run one consolidated Godot parse/startup and Android validation plus physical-device inspection. Vehicle phase remains incomplete. No tests/workflows were run and no IPA build/sign/export was performed.
+
+
+## Progress entry — 2026-11-15
+### INFINITE HORIZONS original game icon — Source implemented; validation pending
+- Replaced the previous generic vehicle badge with an original INFINITE HORIZONS identity: midnight-blue night palette, warm horizon sun, layered Sialkot-inspired city silhouette, and a winding exploration road.
+- Added a transparent adaptive launcher foreground and a separate dark adaptive background for Android launcher icon composition.
+- Updated Android export preset to use the new adaptive foreground/background while retaining the full square icon for the standard launcher icon.
+- Extra improvement: separated adaptive foreground/background assets so Android launchers can apply their own icon masks without baking the background into the foreground artwork.
+- Scope: launcher/app icon only. The mini-map/full-screen map request is a separate gameplay UI task and is not included in this icon commit.
+- Validation/build pending; no IPA build/sign/export performed in this icon batch.
