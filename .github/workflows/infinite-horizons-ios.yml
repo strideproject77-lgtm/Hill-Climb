@@ -133,7 +133,16 @@ jobs:
           if [ "$EXPORT_STATUS" -ne 0 ]; then
             exit "$EXPORT_STATUS"
           fi
-          PROJECT="$(find game/build/ios-project -maxdepth 4 -name '*.xcodeproj' -print -quit)"
+          # Godot emits the .xcodeproj beside the export data directory:
+          # build/ios-project.xcodeproj, not inside build/ios-project/.
+          echo "Searching generated Xcode projects under game/build:"
+          find game/build -maxdepth 3 -name '*.xcodeproj' -print
+          PROJECT="$(find game/build -maxdepth 3 -name '*.xcodeproj' -print -quit)"
+          if [ -z "$PROJECT" ]; then
+            echo "::error::Godot export completed but no .xcodeproj was found under game/build"
+            find game/build -maxdepth 5 -print 2>/dev/null | head -300 || true
+            exit 1
+          fi
           test -n "$PROJECT"
           echo "IOS_XCODE_PROJECT=$PROJECT" >> "$GITHUB_ENV"
           echo "Generated Xcode project: $PROJECT"
