@@ -2,3 +2,4 @@ One-time authorized iOS IPA export trigger for the Clock Tower testing build. Th
 
 Retry after iOS workflow runner and dispatch-condition fixes.
 Unsigned IPA pipeline adapted from Stride-Official workflow. Trigger 2026-11-15T16:00:00+05:00
+Unsigned IPA retry after temporary Godot Team ID export fix.
