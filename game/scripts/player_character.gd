@@ -30,6 +30,10 @@ var blink_amount := 0.0
 var next_blink_at := 2.8
 var left_foot_ik_offset := 0.0
 var right_foot_ik_offset := 0.0
+var left_foot_ground_pitch := 0.0
+var right_foot_ground_pitch := 0.0
+var left_foot_ground_roll := 0.0
+var right_foot_ground_roll := 0.0
 var anim_clock := 0.0
 var moving_amount := 0.0
 var grounded_amount := 1.0
@@ -370,7 +374,8 @@ func _build_character() -> void:
 
 
 func _update_foot_grounding(delta: float) -> void:
-	# Lightweight ground adaptation for uneven streets; this is not full two-bone IK.
+	# Ground probes estimate height and surface orientation; this remains lightweight
+	# procedural contact adaptation rather than full planted-foot two-bone IK.
 	var space := get_world_3d().direct_space_state
 	var foot_specs := [
 		{"ankle": left_ankle, "side": -1.0},
@@ -380,21 +385,32 @@ func _update_foot_grounding(delta: float) -> void:
 		var ankle: Node3D = spec["ankle"]
 		if ankle == null:
 			continue
-			
+
 		var side: float = spec["side"]
 		var foot_origin := ankle.global_position + Vector3(0.0, 0.42, -0.06)
 		var query := PhysicsRayQueryParameters3D.create(foot_origin, foot_origin + Vector3.DOWN * 0.78)
 		query.exclude = [get_rid()]
 		var hit := space.intersect_ray(query)
 		var target_offset := 0.0
+		var target_pitch := 0.0
+		var target_roll := 0.0
 		if not hit.is_empty() and is_on_floor():
 			var desired_foot_y: float = hit.position.y + 0.075
 			target_offset = clampf(desired_foot_y - (ankle.global_position.y - 0.31 + 0.045), -0.12, 0.12)
+			# Convert the hit normal into character-local space before deriving foot tilt.
+			var local_normal: Vector3 = global_transform.basis.inverse() * hit.normal
+			local_normal = local_normal.normalized()
+			target_pitch = clampf(atan2(local_normal.z, maxf(local_normal.y, 0.01)), -0.18, 0.18)
+			target_roll = clampf(atan2(-local_normal.x, maxf(local_normal.y, 0.01)), -0.16, 0.16)
 		if side < 0.0:
 			left_foot_ik_offset = move_toward(left_foot_ik_offset, target_offset, delta * 3.8)
+			left_foot_ground_pitch = move_toward(left_foot_ground_pitch, target_pitch, delta * 2.8)
+			left_foot_ground_roll = move_toward(left_foot_ground_roll, target_roll, delta * 2.8)
 			ankle.position.y = -0.31 + left_foot_ik_offset
 		else:
 			right_foot_ik_offset = move_toward(right_foot_ik_offset, target_offset, delta * 3.8)
+			right_foot_ground_pitch = move_toward(right_foot_ground_pitch, target_pitch, delta * 2.8)
+			right_foot_ground_roll = move_toward(right_foot_ground_roll, target_roll, delta * 2.8)
 			ankle.position.y = -0.31 + right_foot_ik_offset
 
 func _animate_face(delta: float, active_gait: float) -> void:
@@ -451,10 +467,12 @@ func _animate_character(delta: float) -> void:
 		right_knee.rotation.x = opposite_knee_bend
 	if left_ankle:
 		left_ankle.position.y = -0.31 + left_lift + left_foot_ik_offset * (1.0 - clampf(left_lift / 0.095, 0.0, 1.0))
-		left_ankle.rotation.x = -swing * 0.48 - knee_bend * 0.12 + left_toe_roll
+		left_ankle.rotation.x = -swing * 0.48 - knee_bend * 0.12 + left_toe_roll + left_foot_ground_pitch * (1.0 - clampf(left_lift / 0.095, 0.0, 1.0))
+		left_ankle.rotation.z = left_foot_ground_roll * (1.0 - clampf(left_lift / 0.095, 0.0, 1.0))
 	if right_ankle:
 		right_ankle.position.y = -0.31 + right_lift + right_foot_ik_offset * (1.0 - clampf(right_lift / 0.095, 0.0, 1.0))
-		right_ankle.rotation.x = swing * 0.48 - opposite_knee_bend * 0.12 + right_toe_roll
+		right_ankle.rotation.x = swing * 0.48 - opposite_knee_bend * 0.12 + right_toe_roll + right_foot_ground_pitch * (1.0 - clampf(right_lift / 0.095, 0.0, 1.0))
+		right_ankle.rotation.z = right_foot_ground_roll * (1.0 - clampf(right_lift / 0.095, 0.0, 1.0))
 	if left_arm:
 		left_arm.rotation.x = -swing * 0.82
 		left_arm.rotation.z = -0.035 * active_gait
