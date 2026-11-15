@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="432" height="432" viewBox="0 0 432 432">
+<defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff0b5"/><stop offset="1" stop-color="#d68b45"/></linearGradient></defs>
+<circle cx="302" cy="100" r="58" fill="url(#gold)"/>
+<path d="M8 290 91 192l55 42 82-116 88 98 58-52 66 69v199H8Z" fill="#456b72"/>
+<path d="M8 330 112 250l76 58 96-99 80 80 56-38v134H8Z" fill="#142d3d"/>
+<path d="M-20 445c78-92 146-119 208-125 66-7 95-52 114-96 19-45 55-69 104-72" fill="none" stroke="#09121c" stroke-width="92" stroke-linecap="round"/>
+<path d="M-20 445c78-92 146-119 208-125 66-7 95-52 114-96 19-45 55-69 104-72" fill="none" stroke="url(#gold)" stroke-width="66" stroke-linecap="round"/>
+<path d="M-20 445c78-92 146-119 208-125 66-7 95-52 114-96 19-45 55-69 104-72" fill="none" stroke="#8e6848" stroke-width="3" stroke-dasharray="12 16"/>
+<text x="216" y="70" fill="#fff1d5" font-family="Arial,sans-serif" font-size="27" font-weight="900" letter-spacing="4" text-anchor="middle">IH</text>
+</svg>
